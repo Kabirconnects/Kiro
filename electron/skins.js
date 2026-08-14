@@ -31,29 +31,15 @@ document.addEventListener('DOMContentLoaded', () => {
     @keyframes kiroPulse { 0%{box-shadow:0 0 0 0 rgba(74,222,128,.45)} 70%{box-shadow:0 0 0 7px rgba(74,222,128,0)} 100%{box-shadow:0 0 0 0 rgba(74,222,128,0)} }
     .kiro-live-model { color:#e7e1f2; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .kiro-shortcuts { display:flex; gap:5px; flex-wrap:wrap; }
-    .kiro-key {
-      padding:4px 7px; border-radius:7px; border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.035); color:#817a92; font-size:9px;
-    }
-    .kiro-tip {
-      display:flex; align-items:flex-start; gap:8px; padding:9px 10px; border-radius:11px;
-      border:1px solid rgba(255,255,255,.07); background:rgba(255,255,255,.02);
-      color:#8f899e; font-size:10px; line-height:1.4;
-    }
+    .kiro-key { padding:4px 7px; border-radius:7px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.035); color:#817a92; font-size:9px; }
+    .kiro-tip { display:flex; align-items:flex-start; gap:8px; padding:9px 10px; border-radius:11px; border:1px solid rgba(255,255,255,.07); background:rgba(255,255,255,.02); color:#8f899e; font-size:10px; line-height:1.4; }
     .kiro-tip strong { color:#cfc8dc; }
     .kiro-glow-line { height:1px; margin:1px 8px; background:linear-gradient(90deg,transparent,rgba(139,92,246,.45),transparent); }
-    .kiro-count {
-      display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px;
-      padding:0 5px; border-radius:9px; background:rgba(139,92,246,.14); color:#b8a4ff; font-size:9px; font-weight:800;
-    }
+    .kiro-count { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:rgba(139,92,246,.14); color:#b8a4ff; font-size:9px; font-weight:800; }
     .kiro-command-hint { color:#6f697f; font-size:9px; text-align:right; margin-top:-3px; }
-    .kiro-toast {
-      position:fixed; left:12px; right:12px; bottom:12px; z-index:9999; padding:10px 12px;
-      border-radius:11px; background:rgba(25,22,38,.96); border:1px solid rgba(139,92,246,.3);
-      box-shadow:0 16px 40px rgba(0,0,0,.45); color:#eee8fa; font-size:11px;
-      transform:translateY(16px); opacity:0; pointer-events:none; transition:.2s ease;
-    }
+    .kiro-toast { position:fixed; left:12px; right:12px; bottom:12px; z-index:9999; padding:10px 12px; border-radius:11px; background:rgba(25,22,38,.96); border:1px solid rgba(139,92,246,.3); box-shadow:0 16px 40px rgba(0,0,0,.45); color:#eee8fa; font-size:11px; transform:translateY(16px); opacity:0; pointer-events:none; transition:.2s ease; }
     .kiro-toast.show { transform:translateY(0); opacity:1; }
+    .cerebras-option { font-weight:700; }
   `;
   document.head.appendChild(style);
 
@@ -64,11 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const strip = document.createElement('div');
   strip.className = 'kiro-live-strip';
   strip.innerHTML = `
-    <div class="kiro-live-left">
-      <span class="kiro-pulse"></span>
-      <span>Ready to help</span>
-      <span class="kiro-live-model">AI coding workspace</span>
-    </div>
+    <div class="kiro-live-left"><span class="kiro-pulse"></span><span>Ready to help</span><span class="kiro-live-model">AI coding workspace</span></div>
     <span class="kiro-count">v0.1</span>
   `;
   tabs.insertAdjacentElement('afterend', strip);
@@ -86,6 +68,37 @@ document.addEventListener('DOMContentLoaded', () => {
   tip.className = 'kiro-tip';
   tip.innerHTML = '<span>💡</span><span><strong>Pro tip:</strong> Select a project file in Files, then ask Kiro to explain or improve it. Your original file stays untouched until you save.</span>';
   chatView.appendChild(tip);
+
+  // Cerebras is injected here so the existing polished panel markup does not
+  // need to be replaced just to add a provider. panel.js still owns saving/loading.
+  const providerSelect = document.getElementById('provider-select');
+  const modelInput = document.getElementById('model-input');
+  if (providerSelect) {
+    if (!providerSelect.querySelector('option[value="cerebras"]')) {
+      const option = document.createElement('option');
+      option.value = 'cerebras';
+      option.textContent = 'Cerebras ⚡';
+      option.className = 'cerebras-option';
+      providerSelect.appendChild(option);
+    }
+
+    const modelDefaults = {
+      openai: 'gpt-4o-mini',
+      anthropic: 'claude-sonnet-4-6',
+      cerebras: 'llama-3.3-70b'
+    };
+
+    providerSelect.addEventListener('change', () => {
+      const provider = providerSelect.value;
+      if (!modelInput) return;
+      const defaults = modelDefaults[provider];
+      if (!modelInput.value.trim() || Object.values(modelDefaults).includes(modelInput.value.trim())) {
+        modelInput.value = defaults || '';
+      }
+      modelInput.placeholder = defaults ? `e.g. ${defaults}` : 'Enter model name';
+      if (window.kiroToast) window.kiroToast(`${provider.charAt(0).toUpperCase() + provider.slice(1)} selected`);
+    });
+  }
 
   window.kiroToast = message => {
     let toast = document.querySelector('.kiro-toast');
