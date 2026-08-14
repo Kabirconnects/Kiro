@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, clipboard, screen, Tray, Menu, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, clipboard, screen, desktopCapturer, Tray, Menu, nativeImage, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const Store = require('electron-store');
@@ -116,7 +116,6 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   // Keep running in tray on all platforms for a "lives on your screen" companion.
-  // Comment this out if you want it to quit like a normal app on Win/Linux.
 });
 
 // ---------- IPC ----------
@@ -151,6 +150,43 @@ ipcMain.handle('clipboard:write', (event, text) => {
 
 ipcMain.handle('panel:close', () => {
   if (panelWindow) panelWindow.hide();
+});
+
+// ---------- User-triggered screen capture ----------
+// Kiro never watches the screen continuously. A capture happens only after
+// the user explicitly clicks "See my screen" and confirms the native dialog.
+ipcMain.handle('screen:capture', async () => {
+  const win = panelWindow || catWindow;
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'question',
+    buttons: ['Cancel', 'Capture screen'],
+    defaultId: 1,
+    cancelId: 0,
+    message: 'Let Kiro see your screen?',
+    detail: 'Kiro will capture the current desktop image once and send it to your selected AI provider only when you ask for screen help. It does not continuously monitor your screen.'
+  });
+
+  if (response !== 1) return { canceled: true };
+
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 1440, height: 900 }
+    });
+
+    if (!sources.length) return { error: 'No screen was available to capture.' };
+
+    const source = sources[0];
+    const imageData = source.thumbnail.toDataURL();
+    return {
+      imageData,
+      sourceName: source.name || 'Screen',
+      width: source.thumbnail.getSize().width,
+      height: source.thumbnail.getSize().height
+    };
+  } catch (err) {
+    return { error: err.message || String(err) };
+  }
 });
 
 // ---------- Project / file access (explicit permission only) ----------
@@ -245,7 +281,7 @@ ipcMain.handle('project:writeFile', async (event, { relativePath, content }) => 
 // All AI calls happen here in the main process so the API key never touches
 // a renderer devtools console and CORS is never a factor.
 
-ipcMain.handle('ai:ask', async (event, { systemPrompt, userPrompt, code }) => {
+ipcMain.handle('ai:ask', async (event, { systemPrompt, userPrompt, code, imageData }) => {
   const { provider, apiKey, model } = store.store;
 
   if (!apiKey) {
@@ -258,6 +294,13 @@ ipcMain.handle('ai:ask', async (event, { systemPrompt, userPrompt, code }) => {
 
   try {
     if (provider === 'anthropic') {
+      const content = imageData
+        ? [
+            { type: 'text', text: fullUserPrompt },
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageData.replace(/^data:image\/\w+;base64,/, '') } }
+          ]
+        : fullUserPrompt;
+
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -269,7 +312,7 @@ ipcMain.handle('ai:ask', async (event, { systemPrompt, userPrompt, code }) => {
           model: model || 'claude-sonnet-4-6',
           max_tokens: 2000,
           system: systemPrompt,
-          messages: [{ role: 'user', content: fullUserPrompt }]
+          messages: [{ role: 'user', content }]
         })
       });
       const data = await res.json();
@@ -279,6 +322,13 @@ ipcMain.handle('ai:ask', async (event, { systemPrompt, userPrompt, code }) => {
     }
 
     // default: OpenAI-compatible
+    const openAiContent = imageData
+      ? [
+          { type: 'text', text: fullUserPrompt },
+          { type: 'image_url', image_url: { url: imageData } }
+        ]
+      : fullUserPrompt;
+
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -289,7 +339,7 @@ ipcMain.handle('ai:ask', async (event, { systemPrompt, userPrompt, code }) => {
         model: model || 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: fullUserPrompt }
+          { role: 'user', content: openAiContent }
         ]
       })
     });
