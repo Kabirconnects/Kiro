@@ -115,8 +115,11 @@ ipcMain.handle('ai:ask', async (event, { systemPrompt, userPrompt, code, imageDa
   const fullUserPrompt = code ? `${userPrompt}\n\n\`\`\`\n${code}\n\`\`\`` : userPrompt;
   try {
     if (provider === 'cerebras') {
-      const cerebrasContent = imageData ? [{ type: 'text', text: fullUserPrompt }, { type: 'image_url', image_url: { url: imageData } }] : fullUserPrompt;
-      const res = await fetch('https://api.cerebras.ai/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model: model || 'llama-3.3-70b', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: cerebrasContent }], max_tokens: 2000 }) });
+      // Cerebras deprecated llama-3.3-70b in 2026. Use the current production model.
+      const cerebrasModel = (!model || model === 'llama-3.3-70b' || model === 'llama3.3-70b') ? 'gpt-oss-120b' : model;
+      // Current public Cerebras models are text-only; screen images must use a vision-capable provider.
+      if (imageData) return { error: 'Cerebras text models do not support vision. Switch to a vision-capable OpenAI or Anthropic model for Screen Assist.' };
+      const res = await fetch('https://api.cerebras.ai/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model: cerebrasModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: fullUserPrompt }], max_completion_tokens: 2000 }) });
       const data = await res.json(); if (!res.ok) return { error: data?.error?.message || `Cerebras API error (${res.status})` }; return { text: data.choices?.[0]?.message?.content || '' };
     }
     if (provider === 'anthropic') {
