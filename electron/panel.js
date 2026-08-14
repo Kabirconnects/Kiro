@@ -27,6 +27,82 @@ let lastResult = '';
 let openFilePath = null;
 let currentSettings = null;
 
+// Small UI layer kept in JS so the existing panel HTML remains compatible.
+function installWorkspacePolish() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .workspace-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:-2px; }
+    .context-pill { display:inline-flex; align-items:center; gap:5px; max-width:62%; padding:5px 8px; border-radius:8px; background:rgba(139,92,246,.08); border:1px solid rgba(139,92,246,.15); color:#bdb2d8; font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .context-pill strong { color:#eee8fb; overflow:hidden; text-overflow:ellipsis; }
+    .shortcut-pill { color:#777084; font-size:9px; }
+    .response-card-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; }
+    .response-title { display:flex; align-items:center; gap:7px; font-size:10px; font-weight:800; color:#e9e3f5; text-transform:uppercase; letter-spacing:.65px; }
+    .response-state { font-size:9px; color:#7d748e; }
+    .response-state.ready { color:#4ade80; }
+    .response-state.busy { color:#a78bfa; }
+    .response-state.error { color:#fb7185; }
+    .response-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:92px; text-align:center; color:#777084; gap:6px; }
+    .response-empty .icon { font-size:20px; opacity:.85; }
+    .response-empty strong { color:#aaa1b9; font-size:11px; }
+    .response-empty span { font-size:9px; }
+    .response-ready { color:#e5deef; }
+    .quick-actions button.action-active { border-color:rgba(139,92,246,.65); background:rgba(139,92,246,.12); box-shadow:0 0 0 2px rgba(139,92,246,.07); }
+    #send-btn { min-height:40px; font-size:12px; }
+    #apply-btn { min-height:40px; }
+    #save-to-file-btn { min-height:38px; }
+    @media (max-height:560px) {
+      #code-box { height:82px; min-height:68px; }
+      #prompt-box { height:48px; min-height:44px; }
+      #response { min-height:90px; }
+      .hero-card { margin-top:0; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  const codeLabel = document.querySelector('#chat-view .field-label');
+  if (codeLabel) {
+    const meta = document.createElement('div');
+    meta.className = 'workspace-meta';
+    meta.innerHTML = `
+      <span class="context-pill" id="file-context">📄 <strong>No file selected</strong></span>
+      <span class="shortcut-pill">Ctrl/⌘ + Enter to ask</span>
+    `;
+    codeLabel.parentNode.insertBefore(meta, codeLabel);
+  }
+
+  if (responseBox) {
+    const head = document.createElement('div');
+    head.className = 'response-card-head';
+    head.innerHTML = `
+      <div class="response-title">✦ Kiro response</div>
+      <div class="response-state ready" id="response-state">Ready</div>
+    `;
+    responseBox.parentNode.insertBefore(head, responseBox);
+    responseBox.innerHTML = `<div class="response-empty"><div class="icon">✦</div><strong>Your coding answer will appear here</strong><span>Ask Kiro to explain, fix, refactor, or review your code.</span></div>`;
+  }
+}
+
+function setResponseState(state, label) {
+  const el = document.getElementById('response-state');
+  if (!el) return;
+  el.className = `response-state ${state}`;
+  el.textContent = label;
+}
+
+function setFileContext(path) {
+  const el = document.getElementById('file-context');
+  if (!el) return;
+  const label = path ? path : 'No file selected';
+  el.innerHTML = `📄 <strong>${escapeHtml(label)}</strong>`;
+  el.title = label;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, char => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
+  }[char]));
+}
+
 function showTab(tabName) {
   const validTabs = ['chat', 'files', 'character', 'settings'];
   if (!validTabs.includes(tabName)) tabName = 'chat';
@@ -39,6 +115,10 @@ function showTab(tabName) {
     view.classList.toggle('active', view.id === `${tabName}-view`);
   });
 
+  // Always reset the selected view to its top so hero/content cannot appear clipped.
+  const activeView = document.getElementById(`${tabName}-view`);
+  if (activeView) requestAnimationFrame(() => { activeView.scrollTop = 0; });
+
   if (tabName === 'settings') loadSettings();
   if (tabName === 'files') refreshFileList();
 }
@@ -50,7 +130,6 @@ document.getElementById('tabs').addEventListener('click', event => {
   showTab(tab.dataset.tab);
 });
 
-// Dedicated settings button in the title bar.
 settingsTopBtn.addEventListener('click', () => showTab('settings'));
 closeBtn.addEventListener('click', () => window.kiro.closePanel());
 
@@ -66,21 +145,18 @@ async function loadSettings() {
   } catch (error) {
     console.error('Kiro settings load failed:', error);
     responseBox.textContent = `⚠️ Could not load settings: ${error.message || error}`;
+    setResponseState('error', 'Settings error');
   }
 }
 
-loadSettings();
-
-saveSettingsBtn.addEventListener('click', async () => {
+async function saveSettings() {
   saveSettingsBtn.disabled = true;
   try {
     currentSettings = await window.kiro.setSettings({
       provider: providerSelect.value,
       apiKey: apiKeyInput.value.trim(),
       model: modelInput.value.trim(),
-      profile: {
-        name: profileNameInput.value.trim()
-      }
+      profile: { name: profileNameInput.value.trim() }
     });
     saveSettingsBtn.textContent = 'Saved ✓';
   } catch (error) {
@@ -92,11 +168,12 @@ saveSettingsBtn.addEventListener('click', async () => {
       saveSettingsBtn.disabled = false;
     }, 1200);
   }
-});
+}
+
+saveSettingsBtn.addEventListener('click', saveSettings);
 
 function renderSkins(selectedId) {
   skinsContainer.innerHTML = '';
-
   if (typeof KIRO_SKINS === 'undefined') {
     skinsContainer.textContent = 'Character skins unavailable.';
     return;
@@ -107,14 +184,12 @@ function renderSkins(selectedId) {
     opt.className = 'skin-option' + (id === selectedId ? ' selected' : '');
     opt.innerHTML = `
       <div class="skin-swatch" style="background:${skin.bodyMain}; box-shadow: inset 0 0 0 6px ${skin.bodyDark}22;">🐾</div>
-      <div class="skin-label">${skin.name}</div>
+      <div class="skin-label">${escapeHtml(skin.name)}</div>
     `;
 
     opt.addEventListener('click', async () => {
       try {
-        currentSettings = await window.kiro.setSettings({
-          character: { skin: id }
-        });
+        currentSettings = await window.kiro.setSettings({ character: { skin: id } });
         renderSkins(id);
       } catch (error) {
         console.error('Kiro skin save failed:', error);
@@ -145,7 +220,7 @@ async function refreshFileList() {
     fileListEl.innerHTML = '';
 
     if (result.error) {
-      fileListEl.innerHTML = `<li>${result.error}</li>`;
+      fileListEl.innerHTML = `<li>${escapeHtml(result.error)}</li>`;
       return;
     }
 
@@ -162,55 +237,55 @@ async function refreshFileList() {
         const fileResult = await window.kiro.readProjectFile(rel);
         if (fileResult.error) {
           responseBox.textContent = `⚠️ ${fileResult.error}`;
+          setResponseState('error', 'File error');
           return;
         }
 
         codeBox.value = fileResult.content;
         openFilePath = rel;
+        setFileContext(rel);
         saveToFileBtn.style.display = 'block';
 
-        document
-          .querySelectorAll('#file-list li')
-          .forEach(el => el.classList.remove('selected'));
+        document.querySelectorAll('#file-list li').forEach(el => el.classList.remove('selected'));
         li.classList.add('selected');
-
         showTab('chat');
       });
 
       fileListEl.appendChild(li);
     });
   } catch (error) {
-    fileListEl.innerHTML = `<li>⚠️ ${error.message || error}</li>`;
+    fileListEl.innerHTML = `<li>⚠️ ${escapeHtml(error.message || error)}</li>`;
   }
 }
 
 saveToFileBtn.addEventListener('click', async () => {
   if (!openFilePath || !lastResult) return;
 
-  const result = await window.kiro.writeProjectFile(
-    openFilePath,
-    lastResult
-  );
-
+  const result = await window.kiro.writeProjectFile(openFilePath, lastResult);
   if (result.error) {
     responseBox.textContent += `\n\n⚠️ ${result.error}`;
+    setResponseState('error', 'Save failed');
     return;
   }
 
   saveToFileBtn.textContent = 'Saved ✓';
-  setTimeout(() => {
-    saveToFileBtn.textContent = '💾 Save result to open file';
-  }, 1200);
+  setResponseState('ready', 'Saved');
+  setTimeout(() => { saveToFileBtn.textContent = '💾 Save result to open file'; }, 1200);
 });
 
 document.querySelectorAll('.quick-actions button').forEach(btn => {
   btn.addEventListener('click', async () => {
-    const action = btn.dataset.action;
+    document.querySelectorAll('.quick-actions button').forEach(b => b.classList.remove('action-active'));
+    btn.classList.add('action-active');
 
+    const action = btn.dataset.action;
     if (action === 'grab') {
       codeBox.value = await window.kiro.readClipboard();
       openFilePath = null;
+      setFileContext(null);
       saveToFileBtn.style.display = 'none';
+      setResponseState('ready', 'Clipboard loaded');
+      setTimeout(() => btn.classList.remove('action-active'), 500);
       return;
     }
 
@@ -246,6 +321,7 @@ async function sendToAI() {
   sendBtn.disabled = true;
   sendBtn.textContent = 'Thinking…';
   responseBox.textContent = 'Kiro is thinking…';
+  setResponseState('busy', 'Thinking');
 
   const name = currentSettings?.profile?.name;
   const systemPrompt = [
@@ -257,26 +333,26 @@ async function sendToAI() {
   ].filter(Boolean).join(' ');
 
   try {
-    const result = await window.kiro.ask({
-      systemPrompt,
-      userPrompt,
-      code
-    });
+    const result = await window.kiro.ask({ systemPrompt, userPrompt, code });
 
     if (result.error) {
       responseBox.textContent = `⚠️ ${result.error}`;
       lastResult = '';
+      setResponseState('error', 'Error');
       return;
     }
 
     responseBox.textContent = result.text || '(empty response)';
+    responseBox.classList.add('response-ready');
     lastResult = extractCode(result.text) || result.text || '';
+    setResponseState('ready', 'Complete');
   } catch (error) {
     responseBox.textContent = `⚠️ ${error.message || error}`;
     lastResult = '';
+    setResponseState('error', 'Error');
   } finally {
     sendBtn.disabled = false;
-    sendBtn.textContent = 'Ask Kiro';
+    sendBtn.textContent = '✨ Ask Kiro';
   }
 }
 
@@ -291,8 +367,11 @@ applyBtn.addEventListener('click', async () => {
 
   await window.kiro.writeClipboard(lastResult);
   applyBtn.textContent = 'Copied ✓';
+  setResponseState('ready', 'Copied');
 
-  setTimeout(() => {
-    applyBtn.textContent = 'Copy result to clipboard';
-  }, 1200);
+  setTimeout(() => { applyBtn.textContent = 'Copy result to clipboard'; }, 1200);
 });
+
+installWorkspacePolish();
+loadSettings();
+setFileContext(null);
