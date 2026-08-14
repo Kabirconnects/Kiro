@@ -2,127 +2,363 @@
 <html>
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
-  :root { --bg:#1a1428; --bg2:#241b3d; --accent:#7c5cff; --text:#eee6ff; --muted:#9a8fc2; }
-  * { box-sizing:border-box; }
-  html,body { margin:0; padding:0; height:100%; background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:13px; }
-  #titlebar { -webkit-app-region:drag; display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:var(--bg2); border-bottom:1px solid #33264f; }
-  #titlebar .title { font-weight:700; }
-  #titlebar .actions { display:flex; gap:5px; -webkit-app-region:no-drag; }
-  #titlebar button { -webkit-app-region:no-drag; background:#30254d; border:1px solid #49386f; color:var(--text); cursor:pointer; font-size:13px; border-radius:7px; width:30px; height:28px; }
-  #titlebar button:hover { background:#3b2e5d; border-color:var(--accent); }
-  #tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; padding:9px 10px; background:#171124; border-bottom:1px solid #33264f; }
-  .tab { border:1px solid #3a2c5c; background:#211833; color:var(--muted); padding:8px 5px; border-radius:8px; cursor:pointer; text-align:center; font-size:11px; font-weight:600; user-select:none; }
-  .tab:hover { color:var(--text); border-color:#5a4789; background:#2a2042; }
-  .tab.active { background:var(--accent); border-color:var(--accent); color:white; }
-  .view { display:none; flex-direction:column; height:calc(100% - 112px); padding:10px; gap:8px; overflow-y:auto; }
+  :root {
+    --bg: #0b0a12;
+    --surface: #11101b;
+    --surface-2: #171522;
+    --surface-3: #1d1a2b;
+    --border: rgba(255,255,255,.09);
+    --border-strong: rgba(255,255,255,.15);
+    --text: #f7f4ff;
+    --muted: #9993ad;
+    --accent: #8b5cf6;
+    --accent-2: #a78bfa;
+    --accent-soft: rgba(139,92,246,.14);
+    --success: #4ade80;
+    --shadow: 0 24px 70px rgba(0,0,0,.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
+  body {
+    background:
+      radial-gradient(circle at 90% 0%, rgba(139,92,246,.20), transparent 32%),
+      radial-gradient(circle at 0% 100%, rgba(99,102,241,.10), transparent 35%),
+      var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    font-size:13px;
+  }
+
+  button, input, textarea, select { font:inherit; }
+  button { -webkit-tap-highlight-color:transparent; }
+
+  #app-shell { height:100%; display:flex; flex-direction:column; position:relative; }
+
+  #titlebar {
+    -webkit-app-region:drag;
+    height:64px;
+    min-height:64px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 12px 9px 15px;
+    background:rgba(17,16,27,.88);
+    backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border);
+  }
+
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand-icon {
+    width:38px; height:38px; border-radius:12px;
+    display:grid; place-items:center;
+    background:linear-gradient(145deg,#9b6cff,#6840d9);
+    box-shadow:0 8px 24px rgba(139,92,246,.30), inset 0 1px 0 rgba(255,255,255,.25);
+    font-size:20px;
+  }
+  .brand-copy { display:flex; flex-direction:column; gap:2px; }
+  .brand-name { font-size:15px; font-weight:800; letter-spacing:-.2px; }
+  .brand-status { color:var(--muted); font-size:10px; display:flex; align-items:center; gap:5px; }
+  .status-dot { width:6px; height:6px; border-radius:50%; background:var(--success); box-shadow:0 0 10px rgba(74,222,128,.65); }
+
+  #titlebar .actions { display:flex; gap:6px; -webkit-app-region:no-drag; }
+  #titlebar button {
+    -webkit-app-region:no-drag;
+    width:34px; height:34px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.045);
+    color:var(--text);
+    cursor:pointer;
+    transition:.18s ease;
+  }
+  #titlebar button:hover { transform:translateY(-1px); background:var(--accent-soft); border-color:rgba(139,92,246,.55); }
+  #close-btn:hover { background:rgba(239,68,68,.14)!important; border-color:rgba(239,68,68,.35)!important; }
+
+  #tabs {
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:6px;
+    padding:9px 10px;
+    background:rgba(11,10,18,.72);
+    border-bottom:1px solid var(--border);
+  }
+  .tab {
+    border:1px solid transparent;
+    background:transparent;
+    color:var(--muted);
+    padding:9px 5px;
+    border-radius:10px;
+    cursor:pointer;
+    text-align:center;
+    font-size:11px;
+    font-weight:700;
+    user-select:none;
+    transition:.18s ease;
+  }
+  .tab:hover { color:var(--text); background:rgba(255,255,255,.045); }
+  .tab.active {
+    color:#fff;
+    background:linear-gradient(135deg,rgba(139,92,246,.95),rgba(109,67,218,.95));
+    border-color:rgba(255,255,255,.12);
+    box-shadow:0 7px 22px rgba(109,67,218,.24), inset 0 1px 0 rgba(255,255,255,.16);
+  }
+
+  .view {
+    display:none;
+    flex:1;
+    min-height:0;
+    flex-direction:column;
+    padding:14px;
+    gap:10px;
+    overflow-y:auto;
+    scrollbar-width:thin;
+    scrollbar-color:#39324c transparent;
+  }
   .view.active { display:flex; }
-  .quick-actions { display:flex; gap:6px; flex-wrap:wrap; }
-  .quick-actions button { background:var(--bg2); color:var(--text); border:1px solid #3a2c5c; border-radius:6px; padding:5px 8px; cursor:pointer; font-size:12px; }
-  .quick-actions button:hover { border-color:var(--accent); }
-  textarea,input { background:#141020; border:1px solid #3a2c5c; border-radius:8px; color:var(--text); padding:8px; font-family:inherit; font-size:12px; resize:vertical; }
-  textarea:focus,input:focus,select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px #7c5cff22; }
-  #code-box { height:90px; font-family:"SF Mono",Consolas,monospace; }
-  #prompt-box { height:44px; }
-  #response { flex:1; overflow-y:auto; background:#141020; border:1px solid #3a2c5c; border-radius:8px; padding:8px; white-space:pre-wrap; font-family:"SF Mono",Consolas,monospace; font-size:12px; min-height:80px; }
-  .row { display:flex; gap:6px; }
+
+  .hero-card {
+    position:relative;
+    overflow:hidden;
+    padding:15px;
+    border:1px solid var(--border);
+    border-radius:16px;
+    background:linear-gradient(145deg,rgba(139,92,246,.13),rgba(255,255,255,.035));
+    box-shadow:var(--shadow);
+  }
+  .hero-card::after {
+    content:""; position:absolute; width:120px; height:120px; right:-50px; top:-55px;
+    border-radius:50%; background:rgba(167,139,250,.16); filter:blur(12px);
+  }
+  .hero-title { font-size:16px; font-weight:800; letter-spacing:-.3px; }
+  .hero-subtitle { color:var(--muted); margin-top:4px; line-height:1.4; font-size:11px; max-width:280px; }
+
+  .quick-actions { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; }
+  .quick-actions button {
+    background:var(--surface);
+    color:#ddd7ed;
+    border:1px solid var(--border);
+    border-radius:11px;
+    padding:9px 8px;
+    cursor:pointer;
+    font-size:11px;
+    font-weight:650;
+    text-align:left;
+    transition:.18s ease;
+  }
+  .quick-actions button:hover { transform:translateY(-1px); border-color:rgba(139,92,246,.48); background:var(--surface-2); color:#fff; }
+
+  .field-label { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.7px; }
+  .field-label span:last-child { text-transform:none; letter-spacing:0; font-weight:500; }
+
+  textarea, input, select {
+    width:100%;
+    background:rgba(10,9,16,.78);
+    border:1px solid var(--border);
+    border-radius:11px;
+    color:var(--text);
+    padding:10px 11px;
+    outline:none;
+    transition:.18s ease;
+  }
+  textarea { resize:vertical; }
+  textarea:focus, input:focus, select:focus { border-color:rgba(139,92,246,.7); box-shadow:0 0 0 3px rgba(139,92,246,.10); }
+  #code-box { height:108px; min-height:80px; font-family:"SF Mono",Consolas,monospace; font-size:11px; line-height:1.5; }
+  #prompt-box { height:58px; min-height:50px; font-size:12px; }
+
+  .composer { display:flex; flex-direction:column; gap:7px; }
+  .row { display:flex; gap:7px; }
   .row > * { flex:1; }
-  button.primary { background:var(--accent); color:white; border:none; border-radius:8px; padding:8px 10px; cursor:pointer; font-weight:600; }
-  button.primary:hover { filter:brightness(1.1); }
-  button.primary:disabled { opacity:.5; cursor:default; }
-  button.ghost { background:transparent; border:1px solid #3a2c5c; color:var(--text); border-radius:8px; padding:8px 10px; cursor:pointer; }
-  button.ghost:hover { background:var(--bg2); border-color:#5a4789; }
-  label { color:var(--muted); font-size:12px; }
-  .field { display:flex; flex-direction:column; gap:4px; }
-  select { background:#141020; color:var(--text); border:1px solid #3a2c5c; border-radius:8px; padding:8px; }
-  .hint { color:var(--muted); font-size:11px; line-height:1.4; }
-  .section-title { font-size:15px; font-weight:700; margin-bottom:2px; }
-  .skins { display:flex; gap:10px; flex-wrap:wrap; }
-  .skin-option { display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; }
-  .skin-swatch { width:56px; height:56px; border-radius:50%; border:2px solid transparent; display:flex; align-items:center; justify-content:center; font-size:22px; }
-  .skin-option.selected .skin-swatch { border-color:var(--accent); }
-  .skin-label { font-size:11px; color:var(--muted); }
-  #file-list { list-style:none; margin:0; padding:0; max-height:180px; overflow-y:auto; border:1px solid #3a2c5c; border-radius:8px; }
-  #file-list li { padding:7px 8px; cursor:pointer; font-family:"SF Mono",Consolas,monospace; font-size:11px; }
-  #file-list li:hover { background:var(--bg2); }
-  #file-list li.selected { background:var(--bg2); color:var(--accent); }
-  #folder-path { font-size:11px; color:var(--muted); word-break:break-all; }
+  button.primary, button.ghost {
+    border-radius:11px;
+    padding:10px 11px;
+    cursor:pointer;
+    font-weight:750;
+    transition:.18s ease;
+  }
+  button.primary {
+    border:1px solid rgba(255,255,255,.08);
+    background:linear-gradient(135deg,#8b5cf6,#7044df);
+    color:#fff;
+    box-shadow:0 9px 22px rgba(112,68,223,.25), inset 0 1px 0 rgba(255,255,255,.18);
+  }
+  button.primary:hover { transform:translateY(-1px); filter:brightness(1.08); }
+  button.primary:disabled { opacity:.5; cursor:default; transform:none; }
+  button.ghost { background:rgba(255,255,255,.035); border:1px solid var(--border); color:#ddd7ed; }
+  button.ghost:hover { background:rgba(255,255,255,.07); border-color:var(--border-strong); }
+
+  #response {
+    flex:1;
+    min-height:130px;
+    overflow-y:auto;
+    background:linear-gradient(180deg,rgba(10,9,16,.88),rgba(17,16,27,.88));
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px;
+    white-space:pre-wrap;
+    font-family:"SF Mono",Consolas,monospace;
+    font-size:11px;
+    line-height:1.55;
+    color:#dcd6e8;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+  }
+
+  .section-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .section-title { font-size:16px; font-weight:800; letter-spacing:-.25px; }
+  .section-subtitle { color:var(--muted); font-size:11px; line-height:1.45; }
+  .icon-badge { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; background:var(--accent-soft); border:1px solid rgba(139,92,246,.22); font-size:16px; }
+
+  .panel-card { background:rgba(255,255,255,.025); border:1px solid var(--border); border-radius:14px; padding:12px; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  label { color:var(--muted); font-size:11px; font-weight:650; }
+  select { appearance:auto; }
+  .hint { color:var(--muted); font-size:10px; line-height:1.5; }
+
+  .folder-card { display:flex; align-items:center; gap:10px; padding:11px; border-radius:13px; background:rgba(139,92,246,.07); border:1px solid rgba(139,92,246,.17); }
+  .folder-icon { width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:rgba(139,92,246,.15); font-size:17px; flex:none; }
+  #folder-path { font-size:10px; color:var(--muted); word-break:break-all; line-height:1.35; }
+
+  #file-list { list-style:none; margin:0; padding:5px; max-height:230px; overflow-y:auto; border:1px solid var(--border); border-radius:13px; background:rgba(8,7,13,.45); }
+  #file-list:empty::before { content:"No project files loaded yet"; display:block; padding:16px; color:var(--muted); text-align:center; font-size:11px; }
+  #file-list li { margin:2px; padding:9px 10px; border-radius:9px; cursor:pointer; font-family:"SF Mono",Consolas,monospace; font-size:10px; color:#cfc8df; transition:.15s ease; }
+  #file-list li:hover { background:rgba(139,92,246,.10); color:#fff; }
+  #file-list li.selected { background:rgba(139,92,246,.16); color:var(--accent-2); }
+
+  .skins { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+  .skin-option { display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 6px; border:1px solid var(--border); background:rgba(255,255,255,.025); border-radius:13px; cursor:pointer; transition:.18s ease; }
+  .skin-option:hover { background:rgba(255,255,255,.05); transform:translateY(-1px); }
+  .skin-option.selected { border-color:rgba(139,92,246,.65); background:var(--accent-soft); box-shadow:0 8px 22px rgba(139,92,246,.12); }
+  .skin-swatch { width:52px; height:52px; border-radius:15px; border:2px solid transparent; display:flex; align-items:center; justify-content:center; font-size:23px; background:#242031; }
+  .skin-option.selected .skin-swatch { border-color:var(--accent-2); }
+  .skin-label { font-size:10px; color:var(--muted); font-weight:650; }
+
+  .settings-grid { display:flex; flex-direction:column; gap:10px; }
+  .settings-save { margin-top:2px; }
+  .security-note { display:flex; gap:8px; align-items:flex-start; padding:10px; border-radius:11px; background:rgba(74,222,128,.055); border:1px solid rgba(74,222,128,.13); color:#b8d8c2; font-size:10px; line-height:1.4; }
+
+  .footer-note { color:#6f697f; font-size:9px; text-align:center; padding:2px 0 4px; }
+
+  @media (max-height:560px) {
+    #titlebar { height:54px; min-height:54px; }
+    .view { padding:10px; }
+    #tabs { padding:6px 8px; }
+    .hero-card { padding:11px; }
+  }
 </style>
 </head>
 <body>
+<div id="app-shell">
   <div id="titlebar">
-    <span class="title">🐾 Kiro</span>
+    <div class="brand">
+      <div class="brand-icon">🐾</div>
+      <div class="brand-copy">
+        <div class="brand-name">Kiro</div>
+        <div class="brand-status"><span class="status-dot"></span> Coding companion ready</div>
+      </div>
+    </div>
     <div class="actions">
-      <button id="settings-top-btn" title="Open Settings">⚙</button>
-      <button id="close-btn" title="Hide">✕</button>
+      <button id="settings-top-btn" title="Open Settings" aria-label="Open Settings">⚙</button>
+      <button id="close-btn" title="Hide Kiro" aria-label="Hide Kiro">✕</button>
     </div>
   </div>
 
   <div id="tabs" role="navigation" aria-label="Kiro navigation">
     <button class="tab active" data-tab="chat">💬 Chat</button>
     <button class="tab" data-tab="files">📁 Files</button>
-    <button class="tab" data-tab="character">🐱 Character</button>
+    <button class="tab" data-tab="character">🐱 Kiro</button>
     <button class="tab" data-tab="settings">⚙ Settings</button>
   </div>
 
   <div id="chat-view" class="view active">
+    <div class="hero-card">
+      <div class="hero-title">What are we coding today?</div>
+      <div class="hero-subtitle">Paste code, grab your clipboard, or open a project file. Kiro will help you understand, fix, and improve it.</div>
+    </div>
+
     <div class="quick-actions">
       <button data-action="grab">📋 Grab clipboard</button>
-      <button data-action="explain">Explain</button>
-      <button data-action="fix">Fix bug</button>
-      <button data-action="refactor">Refactor</button>
-      <button data-action="comment">Add comments</button>
+      <button data-action="explain">✨ Explain code</button>
+      <button data-action="fix">🐛 Fix a bug</button>
+      <button data-action="refactor">⚡ Refactor</button>
+      <button data-action="comment">💬 Add comments</button>
     </div>
-    <textarea id="code-box" placeholder="Code appears here after 'Grab clipboard' or opening a file, or paste it yourself..."></textarea>
-    <textarea id="prompt-box" placeholder="What do you want Kiro to do? (e.g. 'fix the off-by-one error')"></textarea>
-    <div class="row">
-      <button class="primary" id="send-btn">Ask Kiro</button>
-      <button class="ghost" id="apply-btn">Copy result to clipboard</button>
+
+    <div class="composer">
+      <div class="field-label"><span>Code</span><span>Paste or grab from clipboard</span></div>
+      <textarea id="code-box" placeholder="Your code will appear here..."></textarea>
+      <div class="field-label"><span>Instruction</span><span>Tell Kiro what you need</span></div>
+      <textarea id="prompt-box" placeholder="e.g. Find the bug and explain the fix..."></textarea>
+      <div class="row">
+        <button class="primary" id="send-btn">✦ Ask Kiro</button>
+        <button class="ghost" id="apply-btn">Copy result</button>
+      </div>
+      <button class="ghost" id="save-to-file-btn" style="display:none;">💾 Save result to open file</button>
     </div>
-    <button class="ghost" id="save-to-file-btn" style="display:none;">💾 Save result to open file</button>
+
+    <div class="field-label"><span>Kiro's response</span><span>AI output</span></div>
     <div id="response">Kiro's answer will show up here.</div>
   </div>
 
   <div id="files-view" class="view">
-    <div class="section-title">Project Files</div>
-    <div class="hint">Kiro only ever touches the one folder you explicitly choose below.</div>
+    <div class="section-head">
+      <div><div class="section-title">Project Files</div><div class="section-subtitle">Give Kiro access to one project folder at a time.</div></div>
+      <div class="icon-badge">📁</div>
+    </div>
+    <div class="folder-card">
+      <div class="folder-icon">📂</div>
+      <div id="folder-path">No folder selected yet.</div>
+    </div>
     <button class="primary" id="choose-folder-btn">📂 Choose project folder</button>
-    <div id="folder-path">No folder selected yet.</div>
     <button class="ghost" id="refresh-files-btn">↻ Refresh file list</button>
     <ul id="file-list"></ul>
     <div class="hint">Click a file to load it into Chat. After asking Kiro to change it, use “Save result to open file”.</div>
   </div>
 
   <div id="character-view" class="view">
-    <div class="section-title">Kiro Character</div>
-    <div class="hint">Kiro is (and always will be) a cat — pick a coloring you like.</div>
-    <div class="skins" id="skins-container"></div>
+    <div class="section-head">
+      <div><div class="section-title">Your Kiro</div><div class="section-subtitle">Pick a look for your coding companion.</div></div>
+      <div class="icon-badge">🐱</div>
+    </div>
+    <div class="panel-card">
+      <div class="hint" style="margin-bottom:10px;">Kiro is always a cat. Choose a color that matches your setup.</div>
+      <div class="skins" id="skins-container"></div>
+    </div>
+    <div class="footer-note">Your character choice is saved locally.</div>
   </div>
 
   <div id="settings-view" class="view">
-    <div class="section-title">⚙ Settings</div>
-    <div class="hint">Configure Kiro's AI provider and profile. Settings are stored locally on this device.</div>
-    <div class="field">
-      <label>Your name</label>
-      <input id="profile-name-input" type="text" placeholder="e.g. Kabir" />
+    <div class="section-head">
+      <div><div class="section-title">Settings</div><div class="section-subtitle">Make Kiro work the way you like.</div></div>
+      <div class="icon-badge">⚙</div>
     </div>
-    <div class="field">
-      <label>Provider</label>
-      <select id="provider-select"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select>
-    </div>
-    <div class="field">
-      <label>API key</label>
-      <input id="apikey-input" type="password" placeholder="sk-..." />
-    </div>
-    <div class="field">
-      <label>Model</label>
-      <input id="model-input" type="text" placeholder="e.g. gpt-4o-mini" />
-    </div>
-    <button class="primary" id="save-settings-btn">💾 Save Settings</button>
-    <div class="hint">Your API key stays on this device and is sent directly to your selected AI provider.</div>
-  </div>
 
-  <script src="skins.js"></script>
-  <script src="panel.js"></script>
+    <div class="panel-card settings-grid">
+      <div class="field">
+        <label for="profile-name-input">Your name</label>
+        <input id="profile-name-input" type="text" placeholder="e.g. Kabir" />
+      </div>
+      <div class="field">
+        <label for="provider-select">AI provider</label>
+        <select id="provider-select"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select>
+      </div>
+      <div class="field">
+        <label for="apikey-input">API key</label>
+        <input id="apikey-input" type="password" placeholder="Paste your provider key" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="model-input">Model</label>
+        <input id="model-input" type="text" placeholder="e.g. gpt-4o-mini" />
+      </div>
+      <button class="primary settings-save" id="save-settings-btn">💾 Save Settings</button>
+    </div>
+
+    <div class="security-note"><span>🔒</span><span>Your settings are stored locally by Kiro. Never share your API key in chat, GitHub, or source code.</span></div>
+  </div>
+</div>
+
+<script src="skins.js"></script>
+<script src="panel.js"></script>
 </body>
 </html>
