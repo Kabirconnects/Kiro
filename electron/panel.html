@@ -3,109 +3,66 @@
 <head>
 <meta charset="UTF-8" />
 <style>
-  :root {
-    --bg: #1a1428;
-    --bg2: #241b3d;
-    --accent: #7c5cff;
-    --text: #eee6ff;
-    --muted: #9a8fc2;
-  }
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0; height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    font-size: 13px;
-  }
-  #titlebar {
-    -webkit-app-region: drag;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 12px;
-    background: var(--bg2);
-    border-bottom: 1px solid #33264f;
-  }
-  #titlebar .title { font-weight: 600; }
-  #titlebar button {
-    -webkit-app-region: no-drag;
-    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px;
-  }
-  #tabs { display: flex; gap: 4px; padding: 8px 10px 0; flex-wrap: wrap; }
-  .tab {
-    padding: 6px 10px; border-radius: 8px 8px 0 0; cursor: pointer; color: var(--muted); font-size: 12px;
-  }
-  .tab.active { background: var(--bg2); color: var(--text); }
-
-  .view { display: none; flex-direction: column; height: calc(100% - 96px); padding: 10px; gap: 8px; overflow-y: auto; }
-  .view.active { display: flex; }
-
-  .quick-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-  .quick-actions button {
-    background: var(--bg2); color: var(--text); border: 1px solid #3a2c5c;
-    border-radius: 6px; padding: 5px 8px; cursor: pointer; font-size: 12px;
-  }
-  .quick-actions button:hover { border-color: var(--accent); }
-
-  textarea, input {
-    background: #14102080; border: 1px solid #3a2c5c; border-radius: 8px;
-    color: var(--text); padding: 8px; font-family: inherit; font-size: 12px;
-    resize: vertical;
-  }
-  #code-box { height: 90px; font-family: "SF Mono", Consolas, monospace; }
-  #prompt-box { height: 44px; }
-
-  #response {
-    flex: 1; overflow-y: auto; background: #14102080; border: 1px solid #3a2c5c;
-    border-radius: 8px; padding: 8px; white-space: pre-wrap; font-family: "SF Mono", Consolas, monospace;
-    font-size: 12px; min-height: 80px;
-  }
-
-  .row { display: flex; gap: 6px; }
-  .row > * { flex: 1; }
-
-  button.primary {
-    background: var(--accent); color: white; border: none; border-radius: 8px;
-    padding: 8px 10px; cursor: pointer; font-weight: 600;
-  }
-  button.primary:disabled { opacity: 0.5; cursor: default; }
-  button.ghost {
-    background: transparent; border: 1px solid #3a2c5c; color: var(--text);
-    border-radius: 8px; padding: 8px 10px; cursor: pointer;
-  }
-
-  label { color: var(--muted); font-size: 12px; }
-  .field { display: flex; flex-direction: column; gap: 4px; }
-  select { background: #14102080; color: var(--text); border: 1px solid #3a2c5c; border-radius: 8px; padding: 8px; }
-
-  .hint { color: var(--muted); font-size: 11px; }
-
-  .skins { display: flex; gap: 10px; flex-wrap: wrap; }
-  .skin-option { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
-  .skin-swatch {
-    width: 56px; height: 56px; border-radius: 50%; border: 2px solid transparent;
-    display: flex; align-items: center; justify-content: center; font-size: 22px;
-  }
-  .skin-option.selected .skin-swatch { border-color: var(--accent); }
-  .skin-label { font-size: 11px; color: var(--muted); }
-
-  #file-list { list-style: none; margin: 0; padding: 0; max-height: 140px; overflow-y: auto; border: 1px solid #3a2c5c; border-radius: 8px; }
-  #file-list li { padding: 5px 8px; cursor: pointer; font-family: "SF Mono", Consolas, monospace; font-size: 11px; }
-  #file-list li:hover { background: var(--bg2); }
-  #file-list li.selected { background: var(--bg2); color: var(--accent); }
-  #folder-path { font-size: 11px; color: var(--muted); word-break: break-all; }
+  :root { --bg:#1a1428; --bg2:#241b3d; --accent:#7c5cff; --text:#eee6ff; --muted:#9a8fc2; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; height:100%; background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:13px; }
+  #titlebar { -webkit-app-region:drag; display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:var(--bg2); border-bottom:1px solid #33264f; }
+  #titlebar .title { font-weight:700; }
+  #titlebar .actions { display:flex; gap:5px; -webkit-app-region:no-drag; }
+  #titlebar button { -webkit-app-region:no-drag; background:#30254d; border:1px solid #49386f; color:var(--text); cursor:pointer; font-size:13px; border-radius:7px; width:30px; height:28px; }
+  #titlebar button:hover { background:#3b2e5d; border-color:var(--accent); }
+  #tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; padding:9px 10px; background:#171124; border-bottom:1px solid #33264f; }
+  .tab { border:1px solid #3a2c5c; background:#211833; color:var(--muted); padding:8px 5px; border-radius:8px; cursor:pointer; text-align:center; font-size:11px; font-weight:600; user-select:none; }
+  .tab:hover { color:var(--text); border-color:#5a4789; background:#2a2042; }
+  .tab.active { background:var(--accent); border-color:var(--accent); color:white; }
+  .view { display:none; flex-direction:column; height:calc(100% - 112px); padding:10px; gap:8px; overflow-y:auto; }
+  .view.active { display:flex; }
+  .quick-actions { display:flex; gap:6px; flex-wrap:wrap; }
+  .quick-actions button { background:var(--bg2); color:var(--text); border:1px solid #3a2c5c; border-radius:6px; padding:5px 8px; cursor:pointer; font-size:12px; }
+  .quick-actions button:hover { border-color:var(--accent); }
+  textarea,input { background:#141020; border:1px solid #3a2c5c; border-radius:8px; color:var(--text); padding:8px; font-family:inherit; font-size:12px; resize:vertical; }
+  textarea:focus,input:focus,select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px #7c5cff22; }
+  #code-box { height:90px; font-family:"SF Mono",Consolas,monospace; }
+  #prompt-box { height:44px; }
+  #response { flex:1; overflow-y:auto; background:#141020; border:1px solid #3a2c5c; border-radius:8px; padding:8px; white-space:pre-wrap; font-family:"SF Mono",Consolas,monospace; font-size:12px; min-height:80px; }
+  .row { display:flex; gap:6px; }
+  .row > * { flex:1; }
+  button.primary { background:var(--accent); color:white; border:none; border-radius:8px; padding:8px 10px; cursor:pointer; font-weight:600; }
+  button.primary:hover { filter:brightness(1.1); }
+  button.primary:disabled { opacity:.5; cursor:default; }
+  button.ghost { background:transparent; border:1px solid #3a2c5c; color:var(--text); border-radius:8px; padding:8px 10px; cursor:pointer; }
+  button.ghost:hover { background:var(--bg2); border-color:#5a4789; }
+  label { color:var(--muted); font-size:12px; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  select { background:#141020; color:var(--text); border:1px solid #3a2c5c; border-radius:8px; padding:8px; }
+  .hint { color:var(--muted); font-size:11px; line-height:1.4; }
+  .section-title { font-size:15px; font-weight:700; margin-bottom:2px; }
+  .skins { display:flex; gap:10px; flex-wrap:wrap; }
+  .skin-option { display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; }
+  .skin-swatch { width:56px; height:56px; border-radius:50%; border:2px solid transparent; display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .skin-option.selected .skin-swatch { border-color:var(--accent); }
+  .skin-label { font-size:11px; color:var(--muted); }
+  #file-list { list-style:none; margin:0; padding:0; max-height:180px; overflow-y:auto; border:1px solid #3a2c5c; border-radius:8px; }
+  #file-list li { padding:7px 8px; cursor:pointer; font-family:"SF Mono",Consolas,monospace; font-size:11px; }
+  #file-list li:hover { background:var(--bg2); }
+  #file-list li.selected { background:var(--bg2); color:var(--accent); }
+  #folder-path { font-size:11px; color:var(--muted); word-break:break-all; }
 </style>
 </head>
 <body>
   <div id="titlebar">
     <span class="title">🐾 Kiro</span>
-    <button id="close-btn" title="Hide">✕</button>
+    <div class="actions">
+      <button id="settings-top-btn" title="Open Settings">⚙</button>
+      <button id="close-btn" title="Hide">✕</button>
+    </div>
   </div>
 
-  <div id="tabs">
-    <div class="tab active" data-tab="chat">Chat</div>
-    <div class="tab" data-tab="files">Files</div>
-    <div class="tab" data-tab="character">Character</div>
-    <div class="tab" data-tab="settings">Settings</div>
+  <div id="tabs" role="navigation" aria-label="Kiro navigation">
+    <button class="tab active" data-tab="chat">💬 Chat</button>
+    <button class="tab" data-tab="files">📁 Files</button>
+    <button class="tab" data-tab="character">🐱 Character</button>
+    <button class="tab" data-tab="settings">⚙ Settings</button>
   </div>
 
   <div id="chat-view" class="view active">
@@ -127,41 +84,42 @@
   </div>
 
   <div id="files-view" class="view">
+    <div class="section-title">Project Files</div>
     <div class="hint">Kiro only ever touches the one folder you explicitly choose below.</div>
-    <button class="primary" id="choose-folder-btn">Choose project folder…</button>
+    <button class="primary" id="choose-folder-btn">📂 Choose project folder</button>
     <div id="folder-path">No folder selected yet.</div>
-    <button class="ghost" id="refresh-files-btn">Refresh file list</button>
+    <button class="ghost" id="refresh-files-btn">↻ Refresh file list</button>
     <ul id="file-list"></ul>
-    <div class="hint">Click a file to load it into the Chat tab's code box. Use "Save result to open file" after asking Kiro to write changes back — you'll get a confirmation prompt first.</div>
+    <div class="hint">Click a file to load it into Chat. After asking Kiro to change it, use “Save result to open file”.</div>
   </div>
 
   <div id="character-view" class="view">
+    <div class="section-title">Kiro Character</div>
     <div class="hint">Kiro is (and always will be) a cat — pick a coloring you like.</div>
     <div class="skins" id="skins-container"></div>
   </div>
 
   <div id="settings-view" class="view">
+    <div class="section-title">⚙ Settings</div>
+    <div class="hint">Configure Kiro's AI provider and profile. Settings are stored locally on this device.</div>
     <div class="field">
-      <label>Your name (just for a friendlier greeting — stored locally)</label>
-      <input id="profile-name-input" type="text" placeholder="e.g. Asur" />
+      <label>Your name</label>
+      <input id="profile-name-input" type="text" placeholder="e.g. Kabir" />
     </div>
     <div class="field">
       <label>Provider</label>
-      <select id="provider-select">
-        <option value="openai">OpenAI</option>
-        <option value="anthropic">Anthropic</option>
-      </select>
+      <select id="provider-select"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select>
     </div>
     <div class="field">
-      <label>API key (stored only on this device)</label>
+      <label>API key</label>
       <input id="apikey-input" type="password" placeholder="sk-..." />
     </div>
     <div class="field">
-      <label>Model (optional override)</label>
-      <input id="model-input" type="text" placeholder="e.g. gpt-4o-mini or claude-sonnet-4-6" />
+      <label>Model</label>
+      <input id="model-input" type="text" placeholder="e.g. gpt-4o-mini" />
     </div>
-    <button class="primary" id="save-settings-btn">Save</button>
-    <div class="hint">Your key is stored locally with electron-store and is only sent directly to your chosen provider's API — never to any Kiro server. There's no Kiro account system yet; that only makes sense once there's a hosted backend to log into.</div>
+    <button class="primary" id="save-settings-btn">💾 Save Settings</button>
+    <div class="hint">Your API key stays on this device and is sent directly to your selected AI provider.</div>
   </div>
 
   <script src="skins.js"></script>
