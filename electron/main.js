@@ -21,8 +21,78 @@ function createCatWindow() {
   catWindow.loadFile(path.join(__dirname, 'cat-overlay.html'));
   catWindow.on('closed', () => { catWindow = null; });
 }
+
+function installLiveScreenUI() {
+  if (!panelWindow || panelWindow.isDestroyed()) return;
+  panelWindow.webContents.executeJavaScript(`(() => {
+    if (window.__kiroLiveInstalled) return;
+    window.__kiroLiveInstalled = true;
+    let live = false;
+    let timer = null;
+    let lastAiAt = 0;
+    const STYLE = document.createElement('style');
+    STYLE.textContent = \\`\n      #kiro-live-screen { margin-top:8px; border:1px solid rgba(139,92,246,.28); background:linear-gradient(135deg,rgba(34,211,238,.07),rgba(139,92,246,.12)); border-radius:12px; padding:9px; }\n      #kiro-live-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }\n      #kiro-live-title { display:flex; align-items:center; gap:6px; font-weight:800; font-size:11px; }\n      #kiro-live-dot { width:7px; height:7px; border-radius:50%; background:#6b6575; box-shadow:0 0 0 0 rgba(74,222,128,0); }\n      #kiro-live-dot.on { background:#4ade80; animation:kiroLivePulse 1.4s infinite; }\n      @keyframes kiroLivePulse { 50% { box-shadow:0 0 0 5px rgba(74,222,128,.12); } }\n      #kiro-live-actions { display:flex; gap:5px; }\n      #kiro-live-actions button { border:1px solid #3a2c5c; background:#211833; color:#eee6ff; border-radius:7px; padding:5px 7px; cursor:pointer; font-size:10px; }\n      #kiro-live-actions button:hover { border-color:#7c5cff; }\n      #kiro-live-preview { width:100%; margin-top:8px; display:none; border-radius:9px; border:1px solid rgba(255,255,255,.09); background:#0f0c18; overflow:hidden; }\n      #kiro-live-preview.on { display:block; }\n      #kiro-live-img { display:block; width:100%; max-height:210px; object-fit:contain; background:#0b0910; }\n      #kiro-live-status { display:flex; justify-content:space-between; gap:8px; padding:5px 7px; color:#8f879e; font-size:9px; }\n    \\`;
+    document.head.appendChild(STYLE);
+
+    const target = document.querySelector('.screen-preview') || document.querySelector('.quick-actions');
+    if (!target) return;
+    const card = document.createElement('div');
+    card.id = 'kiro-live-screen';
+    card.innerHTML = \\`<div id="kiro-live-head"><div id="kiro-live-title"><span id="kiro-live-dot"></span> 👁️ Live Screen</div><div id="kiro-live-actions"><button id="kiro-live-start">Start Live</button><button id="kiro-live-stop" style="display:none">Stop</button></div></div><div id="kiro-live-preview"><img id="kiro-live-img" alt="Live screen preview"><div id="kiro-live-status"><span id="kiro-live-state">Off</span><span id="kiro-live-time"></span></div></div>\\`;
+    target.parentNode.insertBefore(card, target.nextSibling);
+
+    const img = document.getElementById('kiro-live-img');
+    const preview = document.getElementById('kiro-live-preview');
+    const dot = document.getElementById('kiro-live-dot');
+    const state = document.getElementById('kiro-live-state');
+    const time = document.getElementById('kiro-live-time');
+    const start = document.getElementById('kiro-live-start');
+    const stop = document.getElementById('kiro-live-stop');
+
+    async function frame() {
+      if (!live) return;
+      try {
+        const result = await window.kiro.autoCaptureScreen();
+        if (result?.imageData) {
+          img.src = result.imageData;
+          lastAiAt = Date.now();
+          time.textContent = new Date().toLocaleTimeString();
+          state.textContent = 'Live • screen updated';
+        } else if (result?.error) {
+          state.textContent = result.error;
+        }
+      } catch (err) { state.textContent = err?.message || 'Capture failed'; }
+    }
+
+    function startLive() {
+      if (live) return;
+      live = true;
+      dot.classList.add('on');
+      preview.classList.add('on');
+      start.style.display = 'none';
+      stop.style.display = '';
+      state.textContent = 'Starting…';
+      frame();
+      timer = setInterval(frame, 1000);
+    }
+    function stopLive() {
+      live = false;
+      dot.classList.remove('on');
+      preview.classList.remove('on');
+      start.style.display = '';
+      stop.style.display = 'none';
+      state.textContent = 'Off';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+    start.addEventListener('click', startLive);
+    stop.addEventListener('click', stopLive);
+    window.addEventListener('beforeunload', stopLive);
+  })();`, true).catch(() => {});
+}
+
 function createPanelWindow() {
-  if (panelWindow) { panelWindow.show(); panelWindow.focus(); return; }
+  if (panelWindow) { panelWindow.show(); panelWindow.focus(); installLiveScreenUI(); return; }
   const catBounds = catWindow ? catWindow.getBounds() : null;
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
   const panelW = 420, panelH = 560;
@@ -30,8 +100,10 @@ function createPanelWindow() {
   const y = catBounds ? Math.max(20, catBounds.y - panelH - 20) : sh - panelH - 40;
   panelWindow = new BrowserWindow({ width: panelW, height: panelH, x, y, minWidth: 340, minHeight: 420, alwaysOnTop: true, frame: false, resizable: true, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
   panelWindow.loadFile(path.join(__dirname, 'panel.html'));
+  panelWindow.webContents.on('did-finish-load', () => installLiveScreenUI());
   panelWindow.on('closed', () => { panelWindow = null; });
 }
+
 function createTray() {
   const icon = nativeImage.createEmpty();
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
@@ -115,9 +187,7 @@ ipcMain.handle('ai:ask', async (event, { systemPrompt, userPrompt, code, imageDa
   const fullUserPrompt = code ? `${userPrompt}\n\n\`\`\`\n${code}\n\`\`\`` : userPrompt;
   try {
     if (provider === 'cerebras') {
-      // Cerebras deprecated llama-3.3-70b in 2026. Use the current production model.
       const cerebrasModel = (!model || model === 'llama-3.3-70b' || model === 'llama3.3-70b') ? 'gpt-oss-120b' : model;
-      // Current public Cerebras models are text-only; screen images must use a vision-capable provider.
       if (imageData) return { error: 'Cerebras text models do not support vision. Switch to a vision-capable OpenAI or Anthropic model for Screen Assist.' };
       const res = await fetch('https://api.cerebras.ai/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model: cerebrasModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: fullUserPrompt }], max_completion_tokens: 2000 }) });
       const data = await res.json(); if (!res.ok) return { error: data?.error?.message || `Cerebras API error (${res.status})` }; return { text: data.choices?.[0]?.message?.content || '' };
