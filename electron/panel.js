@@ -8,6 +8,7 @@ const sendBtn = document.getElementById('send-btn');
 const applyBtn = document.getElementById('apply-btn');
 const saveToFileBtn = document.getElementById('save-to-file-btn');
 const closeBtn = document.getElementById('close-btn');
+const settingsTopBtn = document.getElementById('settings-top-btn');
 
 const providerSelect = document.getElementById('provider-select');
 const apiKeyInput = document.getElementById('apikey-input');
@@ -27,6 +28,9 @@ let openFilePath = null;
 let currentSettings = null;
 
 function showTab(tabName) {
+  const validTabs = ['chat', 'files', 'character', 'settings'];
+  if (!validTabs.includes(tabName)) tabName = 'chat';
+
   tabs.forEach(tab => {
     tab.classList.toggle('active', tab.dataset.tab === tabName);
   });
@@ -34,16 +38,20 @@ function showTab(tabName) {
   views.forEach(view => {
     view.classList.toggle('active', view.id === `${tabName}-view`);
   });
+
+  if (tabName === 'settings') loadSettings();
+  if (tabName === 'files') refreshFileList();
 }
 
-// Use event delegation so navigation still works if the panel HTML is
-// changed later or a tab is re-rendered.
+// Event delegation keeps navigation reliable even if the panel HTML changes.
 document.getElementById('tabs').addEventListener('click', event => {
   const tab = event.target.closest('.tab');
   if (!tab) return;
   showTab(tab.dataset.tab);
 });
 
+// Dedicated settings button in the title bar.
+settingsTopBtn.addEventListener('click', () => showTab('settings'));
 closeBtn.addEventListener('click', () => window.kiro.closePanel());
 
 async function loadSettings() {
@@ -80,7 +88,7 @@ saveSettingsBtn.addEventListener('click', async () => {
     saveSettingsBtn.textContent = 'Save failed';
   } finally {
     setTimeout(() => {
-      saveSettingsBtn.textContent = 'Save';
+      saveSettingsBtn.textContent = '💾 Save Settings';
       saveSettingsBtn.disabled = false;
     }, 1200);
   }
