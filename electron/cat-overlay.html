@@ -23,11 +23,15 @@
   #stage {
     width: 100%;
     height: 100%;
-    -webkit-app-region: drag;
+    -webkit-app-region: no-drag;
     cursor: pointer;
     display: flex;
     align-items: flex-end;
     justify-content: center;
+  }
+
+  #stage:active #cat {
+    transform: scale(0.96);
   }
 
   #cat {
@@ -35,6 +39,7 @@
     height: 84%;
     transform-origin: 50% 100%;
     animation: bob 2.4s ease-in-out infinite;
+    pointer-events: none;
   }
 
   @keyframes bob {
@@ -62,7 +67,7 @@
 </style>
 </head>
 <body>
-  <div id="stage" title="Click me — I can read your clipboard and help fix code">
+  <div id="stage" title="Click Kiro to open the coding assistant">
     <svg id="cat" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="100" cy="150" rx="55" ry="40" fill="var(--body-dark)"/>
       <path class="tail" d="M150 160 Q195 150 185 105" stroke="var(--body-dark)" stroke-width="14" fill="none" stroke-linecap="round"/>
