@@ -13,7 +13,20 @@ Anthropic API key.
 - 🔑 Bring your own API key (OpenAI or Anthropic) — stored locally only, never sent to any Kiro server
 - 📦 Packaged as an installable desktop app (Windows/macOS/Linux) via electron-builder
 
-## Run it locally
+## Download & install (no coding required)
+
+1. Go to the [**Releases**](https://github.com/Kabirconnects/Kiro/releases) page.
+2. Grab the file for your OS:
+   - **Windows** — `Kiro-Setup-x.x.x.exe`
+   - **macOS** — `Kiro-x.x.x.dmg`
+   - **Linux** — `Kiro-x.x.x.AppImage` (make it executable: `chmod +x Kiro-*.AppImage`, then double-click or run it)
+3. Install/run it. The cat appears near the bottom-right of your screen.
+4. Click the cat → **Settings** → paste your own free-to-get OpenAI or Anthropic API key.
+5. Copy some code, click **Grab clipboard**, then hit **Explain**, **Fix bug**, **Refactor**, or **Add comments**.
+
+New installers are built automatically for Windows, macOS, and Linux every time a new version tag is pushed (see `.github/workflows/build.yml`).
+
+## Run it locally (for development)
 
 ```bash
 npm install

@@ -4,6 +4,7 @@
   "private": true,
   "description": "Kiro \ud83d\udc3e \u2014 an AI desktop cat companion that lives on your screen and helps you read, explain, fix, and edit code.",
   "main": "electron/main.js",
+  "author": "Himanshu Arodia",
   "workspaces": ["client"],
   "scripts": {
     "start": "electron .",
