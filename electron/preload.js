@@ -14,10 +14,10 @@ contextBridge.exposeInMainWorld('kiro', {
 
   ask: (payload) => ipcRenderer.invoke('ai:ask', payload),
   captureScreen: () => ipcRenderer.invoke('screen:capture'),
+  autoCaptureScreen: () => ipcRenderer.invoke('screen:autoCapture'),
 
   chooseProjectFolder: () => ipcRenderer.invoke('project:chooseFolder'),
   listProjectFiles: () => ipcRenderer.invoke('project:listFiles'),
   readProjectFile: (relativePath) => ipcRenderer.invoke('project:readFile', relativePath),
-  writeProjectFile: (relativePath, content) =>
-    ipcRenderer.invoke('project:writeFile', { relativePath, content })
+  writeProjectFile: (relativePath, content) => ipcRenderer.invoke('project:writeFile', { relativePath, content })
 });
