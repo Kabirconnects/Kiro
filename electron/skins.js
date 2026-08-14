@@ -61,7 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatView = document.getElementById('chat-view');
   if (!tabs || !chatView) return;
 
-  // Add a compact live-status strip under the navigation.
   const strip = document.createElement('div');
   strip.className = 'kiro-live-strip';
   strip.innerHTML = `
@@ -74,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
   `;
   tabs.insertAdjacentElement('afterend', strip);
 
-  // Add a small keyboard-help line without changing the existing controls.
   const hint = document.createElement('div');
   hint.className = 'kiro-shortcuts';
   hint.innerHTML = '<span class="kiro-key">Ctrl/⌘ + Enter · Ask</span><span class="kiro-key">Click cat · Toggle</span><span class="kiro-key">⚙ · Settings</span>';
@@ -89,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
   tip.innerHTML = '<span>💡</span><span><strong>Pro tip:</strong> Select a project file in Files, then ask Kiro to explain or improve it. Your original file stays untouched until you save.</span>';
   chatView.appendChild(tip);
 
-  // Lightweight toast helper for future UI actions and successful saves.
   window.kiroToast = message => {
     let toast = document.querySelector('.kiro-toast');
     if (!toast) {
@@ -102,4 +99,9 @@ document.addEventListener('DOMContentLoaded', () => {
     clearTimeout(window.__kiroToastTimer);
     window.__kiroToastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
   };
+
+  // Load the opt-in automatic screen assistant after the DOM is ready.
+  const autoScreenScript = document.createElement('script');
+  autoScreenScript.src = 'auto-screen.js';
+  document.body.appendChild(autoScreenScript);
 });
