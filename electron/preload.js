@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('kiro', {
   writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
 
   ask: (payload) => ipcRenderer.invoke('ai:ask', payload),
+  captureScreen: () => ipcRenderer.invoke('screen:capture'),
 
   chooseProjectFolder: () => ipcRenderer.invoke('project:chooseFolder'),
   listProjectFiles: () => ipcRenderer.invoke('project:listFiles'),
