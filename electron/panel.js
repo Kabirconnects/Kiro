@@ -123,7 +123,6 @@ function showTab(tabName) {
   if (tabName === 'files') refreshFileList();
 }
 
-// Event delegation keeps navigation reliable even if the panel HTML changes.
 document.getElementById('tabs').addEventListener('click', event => {
   const tab = event.target.closest('.tab');
   if (!tab) return;
@@ -375,3 +374,46 @@ applyBtn.addEventListener('click', async () => {
 installWorkspacePolish();
 loadSettings();
 setFileContext(null);
+
+// Final hero visibility fix: the Chat hero must always have enough height for both lines.
+const heroFixStyle = document.createElement('style');
+heroFixStyle.textContent = `
+  #chat-view { scroll-padding-top: 6px; }
+  #chat-view .hero-card {
+    flex: 0 0 auto !important;
+    min-height: 92px !important;
+    height: auto !important;
+    margin-top: 2px !important;
+    padding: 16px !important;
+    overflow: hidden !important;
+    isolation: isolate;
+  }
+  #chat-view .hero-card::after { z-index: -1 !important; }
+  #chat-view .hero-title {
+    position: relative;
+    z-index: 2;
+    display: block !important;
+    min-height: 22px;
+    line-height: 1.4 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    white-space: normal;
+  }
+  #chat-view .hero-subtitle {
+    position: relative;
+    z-index: 2;
+    display: block !important;
+    line-height: 1.45 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+  }
+`;
+document.head.appendChild(heroFixStyle);
+
+// Reset Chat scroll after the browser has finished laying out the panel.
+requestAnimationFrame(() => {
+  const chatView = document.getElementById('chat-view');
+  if (chatView) chatView.scrollTop = 0;
+});
