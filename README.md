@@ -5,11 +5,15 @@ a small panel, grab whatever code is on your clipboard (or paste it in), and
 ask Kiro to explain, fix, refactor, or comment it — using your own OpenAI or
 Anthropic API key.
 
-## Features (v0.1)
+## Features
 
-- 🐾 Animated cat companion — always-on-top, transparent, draggable, click to open
+- 🐾 Animated cat companion — always-on-top, transparent, draggable, click to open (it's always a cat — see Character below)
+- 🎨 **Multiple selectable characters** — 4 cat color skins (Violet, Orange Tabby, Mint, Black & White), picked from the Character tab and applied live
 - 💬 Chat panel with quick actions: Explain, Fix bug, Refactor, Add comments
 - 📋 One-click "Grab clipboard" to pull in code from anywhere
+- 📂 **Direct file/project access, with explicit permission** — pick one project folder via the native OS picker, browse its files, load one into the chat, and let Kiro write a fix straight back to disk (you get a confirmation dialog before anything is overwritten, and Kiro can never touch anything outside that one folder)
+- 🌐 **Browser-based companion** (`client/`) — the same chat + character picker running as a plain web app, no install needed, using your API key stored in the browser's localStorage
+- 👤 **Local profile** — set your name for a friendlier greeting. There's no real login system yet since that only makes sense once there's a hosted backend Kiro can authenticate against — right now everything (keys, project folder, profile) lives on your own device/browser only
 - 🔑 Bring your own API key (OpenAI or Anthropic) — stored locally only, never sent to any Kiro server
 - 📦 Packaged as an installable desktop app (Windows/macOS/Linux) via electron-builder
 
@@ -36,6 +40,18 @@ npm run dev
 The cat will appear near your screen's bottom-right corner. Click it to open
 the panel, go to **Settings**, and paste your API key.
 
+## Run the browser companion
+
+No install required — this is a plain static web app:
+
+```bash
+npm run dev -w client     # local dev server
+npm run build -w client   # outputs client/dist, deployable to any static host (e.g. GitHub Pages)
+```
+
+Open it, go to Settings, paste your API key, and it works the same as the desktop chat tab
+(minus native file access and always-on-top — a browser tab can't do those).
+
 ## Build an installer
 
 ```bash
@@ -52,9 +68,11 @@ Installers land in `release/`.
 - [x] AI chat + code explain/fix/refactor/comment
 - [x] Bring-your-own-key AI bridge (OpenAI + Anthropic)
 - [x] Packaging and installers
-- [ ] Multiple selectable companion characters
-- [ ] Direct file/project access with explicit permission
-- [ ] Browser-based companion (using the `client/` Vite+React app)
-- [ ] Authentication and user profiles (only needed once there's a hosted backend)
+- [x] Multiple selectable companion characters (cat color skins)
+- [x] Direct file/project access with explicit permission
+- [x] Browser-based companion (`client/` Vite+React app)
+- [x] Local profile (name) — full accounts/auth still needs a hosted backend, see below
+- [ ] Hosted backend + real authentication and multi-device user profiles
+- [ ] Code-signed installers (removes the Windows SmartScreen / macOS Gatekeeper warnings)
 
 > Kiro is designed to make coding more interactive, personal, and fun.

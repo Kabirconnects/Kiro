@@ -14,9 +14,11 @@ window.addEventListener('mousemove', () => {
 
 stage.addEventListener('mouseup', () => {
   const held = Date.now() - downAt;
-  // Treat as a click (not a drag) if it was quick and no drag was registered
-  // by the OS-level window drag region.
   if (held < 350) {
     window.kiro.togglePanel();
   }
 });
+
+// Apply saved skin on load, and live-update if changed from the panel.
+window.kiro.getSettings().then(s => applyKiroSkin(s.character?.skin));
+window.kiro.onSettingsChanged(s => applyKiroSkin(s.character?.skin));

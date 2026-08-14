@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain, clipboard, screen, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, clipboard, screen, Tray, Menu, nativeImage, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs/promises');
 const Store = require('electron-store');
 
 const store = new Store({
@@ -7,7 +8,10 @@ const store = new Store({
   defaults: {
     provider: 'openai', // 'openai' | 'anthropic'
     apiKey: '',
-    model: '' // optional override
+    model: '', // optional override
+    character: { skin: 'violet' }, // still always a cat — skin just recolors it
+    profile: { name: '' },
+    project: { folder: null } // explicit user-chosen folder Kiro is allowed to touch
   }
 });
 
@@ -134,6 +138,8 @@ ipcMain.on('cat:move', (event, { dx, dy }) => {
 ipcMain.handle('settings:get', () => store.store);
 ipcMain.handle('settings:set', (event, partial) => {
   store.set(partial);
+  if (catWindow) catWindow.webContents.send('settings:changed', store.store);
+  if (panelWindow) panelWindow.webContents.send('settings:changed', store.store);
   return store.store;
 });
 
@@ -145,6 +151,94 @@ ipcMain.handle('clipboard:write', (event, text) => {
 
 ipcMain.handle('panel:close', () => {
   if (panelWindow) panelWindow.hide();
+});
+
+// ---------- Project / file access (explicit permission only) ----------
+// Kiro only ever reads/writes inside the single folder the user picked via
+// the native OS dialog. Every path is resolved and checked to stay inside
+// that folder before any fs call runs.
+
+const IGNORE_DIRS = new Set(['node_modules', '.git', 'release', 'dist', '.next', '.venv']);
+
+function withinProjectFolder(root, relativePath) {
+  const resolved = path.resolve(root, relativePath);
+  const normalizedRoot = path.resolve(root) + path.sep;
+  if (resolved + path.sep !== normalizedRoot && !resolved.startsWith(normalizedRoot)) {
+    throw new Error('Path escapes the permitted project folder.');
+  }
+  return resolved;
+}
+
+ipcMain.handle('project:chooseFolder', async () => {
+  const win = panelWindow || catWindow;
+  const result = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
+  if (result.canceled || !result.filePaths[0]) return store.get('project');
+  store.set('project', { folder: result.filePaths[0] });
+  return store.get('project');
+});
+
+ipcMain.handle('project:listFiles', async () => {
+  const folder = store.get('project.folder');
+  if (!folder) return { error: 'No project folder selected yet.' };
+
+  const results = [];
+  async function walk(dir, depth) {
+    if (depth > 4 || results.length > 500) return;
+    let entries;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (IGNORE_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
+      const full = path.join(dir, entry.name);
+      const rel = path.relative(folder, full);
+      if (entry.isDirectory()) {
+        await walk(full, depth + 1);
+      } else {
+        results.push(rel);
+      }
+    }
+  }
+  await walk(folder, 0);
+  return { files: results, folder };
+});
+
+ipcMain.handle('project:readFile', async (event, relativePath) => {
+  const folder = store.get('project.folder');
+  if (!folder) return { error: 'No project folder selected.' };
+  try {
+    const full = withinProjectFolder(folder, relativePath);
+    const content = await fs.readFile(full, 'utf-8');
+    return { content };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle('project:writeFile', async (event, { relativePath, content }) => {
+  const folder = store.get('project.folder');
+  if (!folder) return { error: 'No project folder selected.' };
+
+  const win = panelWindow || catWindow;
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'question',
+    buttons: ['Cancel', `Overwrite ${relativePath}`],
+    defaultId: 1,
+    cancelId: 0,
+    message: `Let Kiro write to "${relativePath}"?`,
+    detail: 'This will overwrite the file with the AI-generated content shown in the panel.'
+  });
+  if (response !== 1) return { error: 'Write cancelled.' };
+
+  try {
+    const full = withinProjectFolder(folder, relativePath);
+    await fs.writeFile(full, content, 'utf-8');
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message };
+  }
 });
 
 // ---------- AI bridge ----------

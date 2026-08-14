@@ -7,9 +7,16 @@ contextBridge.exposeInMainWorld('kiro', {
 
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (partial) => ipcRenderer.invoke('settings:set', partial),
+  onSettingsChanged: (cb) => ipcRenderer.on('settings:changed', (event, settings) => cb(settings)),
 
   readClipboard: () => ipcRenderer.invoke('clipboard:read'),
   writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
 
-  ask: (payload) => ipcRenderer.invoke('ai:ask', payload)
+  ask: (payload) => ipcRenderer.invoke('ai:ask', payload),
+
+  chooseProjectFolder: () => ipcRenderer.invoke('project:chooseFolder'),
+  listProjectFiles: () => ipcRenderer.invoke('project:listFiles'),
+  readProjectFile: (relativePath) => ipcRenderer.invoke('project:readFile', relativePath),
+  writeProjectFile: (relativePath, content) =>
+    ipcRenderer.invoke('project:writeFile', { relativePath, content })
 });

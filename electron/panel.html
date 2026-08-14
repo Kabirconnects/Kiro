@@ -30,14 +30,14 @@
     -webkit-app-region: no-drag;
     background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px;
   }
-  #tabs { display: flex; gap: 4px; padding: 8px 10px 0; }
+  #tabs { display: flex; gap: 4px; padding: 8px 10px 0; flex-wrap: wrap; }
   .tab {
-    padding: 6px 10px; border-radius: 8px 8px 0 0; cursor: pointer; color: var(--muted);
+    padding: 6px 10px; border-radius: 8px 8px 0 0; cursor: pointer; color: var(--muted); font-size: 12px;
   }
   .tab.active { background: var(--bg2); color: var(--text); }
 
-  #chat-view, #settings-view { display: flex; flex-direction: column; height: calc(100% - 90px); padding: 10px; gap: 8px; }
-  #settings-view { display: none; }
+  .view { display: none; flex-direction: column; height: calc(100% - 96px); padding: 10px; gap: 8px; overflow-y: auto; }
+  .view.active { display: flex; }
 
   .quick-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .quick-actions button {
@@ -57,7 +57,7 @@
   #response {
     flex: 1; overflow-y: auto; background: #14102080; border: 1px solid #3a2c5c;
     border-radius: 8px; padding: 8px; white-space: pre-wrap; font-family: "SF Mono", Consolas, monospace;
-    font-size: 12px;
+    font-size: 12px; min-height: 80px;
   }
 
   .row { display: flex; gap: 6px; }
@@ -78,6 +78,21 @@
   select { background: #14102080; color: var(--text); border: 1px solid #3a2c5c; border-radius: 8px; padding: 8px; }
 
   .hint { color: var(--muted); font-size: 11px; }
+
+  .skins { display: flex; gap: 10px; flex-wrap: wrap; }
+  .skin-option { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+  .skin-swatch {
+    width: 56px; height: 56px; border-radius: 50%; border: 2px solid transparent;
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .skin-option.selected .skin-swatch { border-color: var(--accent); }
+  .skin-label { font-size: 11px; color: var(--muted); }
+
+  #file-list { list-style: none; margin: 0; padding: 0; max-height: 140px; overflow-y: auto; border: 1px solid #3a2c5c; border-radius: 8px; }
+  #file-list li { padding: 5px 8px; cursor: pointer; font-family: "SF Mono", Consolas, monospace; font-size: 11px; }
+  #file-list li:hover { background: var(--bg2); }
+  #file-list li.selected { background: var(--bg2); color: var(--accent); }
+  #folder-path { font-size: 11px; color: var(--muted); word-break: break-all; }
 </style>
 </head>
 <body>
@@ -88,10 +103,12 @@
 
   <div id="tabs">
     <div class="tab active" data-tab="chat">Chat</div>
+    <div class="tab" data-tab="files">Files</div>
+    <div class="tab" data-tab="character">Character</div>
     <div class="tab" data-tab="settings">Settings</div>
   </div>
 
-  <div id="chat-view">
+  <div id="chat-view" class="view active">
     <div class="quick-actions">
       <button data-action="grab">📋 Grab clipboard</button>
       <button data-action="explain">Explain</button>
@@ -99,16 +116,35 @@
       <button data-action="refactor">Refactor</button>
       <button data-action="comment">Add comments</button>
     </div>
-    <textarea id="code-box" placeholder="Code appears here after 'Grab clipboard', or paste it yourself..."></textarea>
+    <textarea id="code-box" placeholder="Code appears here after 'Grab clipboard' or opening a file, or paste it yourself..."></textarea>
     <textarea id="prompt-box" placeholder="What do you want Kiro to do? (e.g. 'fix the off-by-one error')"></textarea>
     <div class="row">
       <button class="primary" id="send-btn">Ask Kiro</button>
       <button class="ghost" id="apply-btn">Copy result to clipboard</button>
     </div>
+    <button class="ghost" id="save-to-file-btn" style="display:none;">💾 Save result to open file</button>
     <div id="response">Kiro's answer will show up here.</div>
   </div>
 
-  <div id="settings-view">
+  <div id="files-view" class="view">
+    <div class="hint">Kiro only ever touches the one folder you explicitly choose below.</div>
+    <button class="primary" id="choose-folder-btn">Choose project folder…</button>
+    <div id="folder-path">No folder selected yet.</div>
+    <button class="ghost" id="refresh-files-btn">Refresh file list</button>
+    <ul id="file-list"></ul>
+    <div class="hint">Click a file to load it into the Chat tab's code box. Use "Save result to open file" after asking Kiro to write changes back — you'll get a confirmation prompt first.</div>
+  </div>
+
+  <div id="character-view" class="view">
+    <div class="hint">Kiro is (and always will be) a cat — pick a coloring you like.</div>
+    <div class="skins" id="skins-container"></div>
+  </div>
+
+  <div id="settings-view" class="view">
+    <div class="field">
+      <label>Your name (just for a friendlier greeting — stored locally)</label>
+      <input id="profile-name-input" type="text" placeholder="e.g. Asur" />
+    </div>
     <div class="field">
       <label>Provider</label>
       <select id="provider-select">
@@ -125,9 +161,10 @@
       <input id="model-input" type="text" placeholder="e.g. gpt-4o-mini or claude-sonnet-4-6" />
     </div>
     <button class="primary" id="save-settings-btn">Save</button>
-    <div class="hint">Your key is stored locally with electron-store and is only sent directly to your chosen provider's API — never to any Kiro server.</div>
+    <div class="hint">Your key is stored locally with electron-store and is only sent directly to your chosen provider's API — never to any Kiro server. There's no Kiro account system yet; that only makes sense once there's a hosted backend to log into.</div>
   </div>
 
+  <script src="skins.js"></script>
   <script src="panel.js"></script>
 </body>
 </html>

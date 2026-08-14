@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <style>
+  :root {
+    --body-dark: #2b2140;
+    --body-main: #372a55;
+    --accent: #7c5cff;
+    --eye: #ffe66d;
+  }
   html, body {
     margin: 0;
     padding: 0;
@@ -53,44 +59,30 @@
     0%, 92%, 100% { transform: scaleY(1); }
     95% { transform: scaleY(0.1); }
   }
-
-  #bubble {
-    position: absolute;
-    top: 2px;
-    right: 6px;
-    width: 10px;
-    height: 10px;
-    background: #7c5cff;
-    border-radius: 50%;
-    box-shadow: 0 0 6px #7c5cff;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  #bubble.show { opacity: 1; }
 </style>
 </head>
 <body>
   <div id="stage" title="Click me — I can read your clipboard and help fix code">
-    <div id="bubble"></div>
     <svg id="cat" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="100" cy="150" rx="55" ry="40" fill="#2b2140"/>
-      <path class="tail" d="M150 160 Q195 150 185 105" stroke="#2b2140" stroke-width="14" fill="none" stroke-linecap="round"/>
-      <circle cx="100" cy="90" r="48" fill="#372a55"/>
-      <path d="M60 60 L48 20 L85 48 Z" fill="#372a55"/>
-      <path d="M140 60 L152 20 L115 48 Z" fill="#372a55"/>
-      <path d="M64 55 L56 32 L80 50 Z" fill="#7c5cff"/>
-      <path d="M136 55 L144 32 L120 50 Z" fill="#7c5cff"/>
-      <ellipse class="eye" cx="82" cy="92" rx="7" ry="9" fill="#ffe66d"/>
-      <ellipse class="eye" cx="118" cy="92" rx="7" ry="9" fill="#ffe66d"/>
+      <ellipse cx="100" cy="150" rx="55" ry="40" fill="var(--body-dark)"/>
+      <path class="tail" d="M150 160 Q195 150 185 105" stroke="var(--body-dark)" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <circle cx="100" cy="90" r="48" fill="var(--body-main)"/>
+      <path d="M60 60 L48 20 L85 48 Z" fill="var(--body-main)"/>
+      <path d="M140 60 L152 20 L115 48 Z" fill="var(--body-main)"/>
+      <path d="M64 55 L56 32 L80 50 Z" fill="var(--accent)"/>
+      <path d="M136 55 L144 32 L120 50 Z" fill="var(--accent)"/>
+      <ellipse class="eye" cx="82" cy="92" rx="7" ry="9" fill="var(--eye)"/>
+      <ellipse class="eye" cx="118" cy="92" rx="7" ry="9" fill="var(--eye)"/>
       <circle cx="82" cy="92" r="3" fill="#1a1428"/>
       <circle cx="118" cy="92" r="3" fill="#1a1428"/>
-      <path d="M94 106 Q100 112 106 106" stroke="#ffe66d" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <line x1="55" y1="100" x2="25" y2="96" stroke="#7c5cff" stroke-width="2"/>
-      <line x1="55" y1="108" x2="25" y2="110" stroke="#7c5cff" stroke-width="2"/>
-      <line x1="145" y1="100" x2="175" y2="96" stroke="#7c5cff" stroke-width="2"/>
-      <line x1="145" y1="108" x2="175" y2="110" stroke="#7c5cff" stroke-width="2"/>
+      <path d="M94 106 Q100 112 106 106" stroke="var(--eye)" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <line x1="55" y1="100" x2="25" y2="96" stroke="var(--accent)" stroke-width="2"/>
+      <line x1="55" y1="108" x2="25" y2="110" stroke="var(--accent)" stroke-width="2"/>
+      <line x1="145" y1="100" x2="175" y2="96" stroke="var(--accent)" stroke-width="2"/>
+      <line x1="145" y1="108" x2="175" y2="110" stroke="var(--accent)" stroke-width="2"/>
     </svg>
   </div>
+  <script src="skins.js"></script>
   <script src="cat-overlay.js"></script>
 </body>
 </html>
