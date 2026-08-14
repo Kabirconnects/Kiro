@@ -26,117 +26,193 @@ let lastResult = '';
 let openFilePath = null;
 let currentSettings = null;
 
-tabs.forEach(tab => {
-  tab.addEventListener('click', () => {
-    tabs.forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    views.forEach(v => v.classList.remove('active'));
-    document.getElementById(`${tab.dataset.tab}-view`).classList.add('active');
+function showTab(tabName) {
+  tabs.forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === tabName);
   });
+
+  views.forEach(view => {
+    view.classList.toggle('active', view.id === `${tabName}-view`);
+  });
+}
+
+// Use event delegation so navigation still works if the panel HTML is
+// changed later or a tab is re-rendered.
+document.getElementById('tabs').addEventListener('click', event => {
+  const tab = event.target.closest('.tab');
+  if (!tab) return;
+  showTab(tab.dataset.tab);
 });
 
 closeBtn.addEventListener('click', () => window.kiro.closePanel());
 
 async function loadSettings() {
-  currentSettings = await window.kiro.getSettings();
-  providerSelect.value = currentSettings.provider || 'openai';
-  apiKeyInput.value = currentSettings.apiKey || '';
-  modelInput.value = currentSettings.model || '';
-  profileNameInput.value = currentSettings.profile?.name || '';
-  renderSkins(currentSettings.character?.skin || 'violet');
-  folderPathEl.textContent = currentSettings.project?.folder || 'No folder selected yet.';
+  try {
+    currentSettings = await window.kiro.getSettings();
+    providerSelect.value = currentSettings?.provider || 'openai';
+    apiKeyInput.value = currentSettings?.apiKey || '';
+    modelInput.value = currentSettings?.model || '';
+    profileNameInput.value = currentSettings?.profile?.name || '';
+    renderSkins(currentSettings?.character?.skin || 'violet');
+    folderPathEl.textContent = currentSettings?.project?.folder || 'No folder selected yet.';
+  } catch (error) {
+    console.error('Kiro settings load failed:', error);
+    responseBox.textContent = `⚠️ Could not load settings: ${error.message || error}`;
+  }
 }
+
 loadSettings();
 
 saveSettingsBtn.addEventListener('click', async () => {
-  currentSettings = await window.kiro.setSettings({
-    provider: providerSelect.value,
-    apiKey: apiKeyInput.value.trim(),
-    model: modelInput.value.trim(),
-    profile: { name: profileNameInput.value.trim() }
-  });
-  saveSettingsBtn.textContent = 'Saved \u2713';
-  setTimeout(() => (saveSettingsBtn.textContent = 'Save'), 1200);
+  saveSettingsBtn.disabled = true;
+  try {
+    currentSettings = await window.kiro.setSettings({
+      provider: providerSelect.value,
+      apiKey: apiKeyInput.value.trim(),
+      model: modelInput.value.trim(),
+      profile: {
+        name: profileNameInput.value.trim()
+      }
+    });
+    saveSettingsBtn.textContent = 'Saved ✓';
+  } catch (error) {
+    console.error('Kiro settings save failed:', error);
+    saveSettingsBtn.textContent = 'Save failed';
+  } finally {
+    setTimeout(() => {
+      saveSettingsBtn.textContent = 'Save';
+      saveSettingsBtn.disabled = false;
+    }, 1200);
+  }
 });
 
 function renderSkins(selectedId) {
   skinsContainer.innerHTML = '';
+
+  if (typeof KIRO_SKINS === 'undefined') {
+    skinsContainer.textContent = 'Character skins unavailable.';
+    return;
+  }
+
   Object.entries(KIRO_SKINS).forEach(([id, skin]) => {
     const opt = document.createElement('div');
     opt.className = 'skin-option' + (id === selectedId ? ' selected' : '');
     opt.innerHTML = `
-      <div class="skin-swatch" style="background:${skin.bodyMain}; box-shadow: inset 0 0 0 6px ${skin.bodyDark}22;">\uD83D\uDC3E</div>
+      <div class="skin-swatch" style="background:${skin.bodyMain}; box-shadow: inset 0 0 0 6px ${skin.bodyDark}22;">🐾</div>
       <div class="skin-label">${skin.name}</div>
     `;
+
     opt.addEventListener('click', async () => {
-      currentSettings = await window.kiro.setSettings({ character: { skin: id } });
-      renderSkins(id);
+      try {
+        currentSettings = await window.kiro.setSettings({
+          character: { skin: id }
+        });
+        renderSkins(id);
+      } catch (error) {
+        console.error('Kiro skin save failed:', error);
+      }
     });
+
     skinsContainer.appendChild(opt);
   });
 }
 
 chooseFolderBtn.addEventListener('click', async () => {
-  const project = await window.kiro.chooseProjectFolder();
-  folderPathEl.textContent = project.folder || 'No folder selected yet.';
-  if (project.folder) await refreshFileList();
+  try {
+    const project = await window.kiro.chooseProjectFolder();
+    folderPathEl.textContent = project?.folder || 'No folder selected yet.';
+    if (project?.folder) await refreshFileList();
+  } catch (error) {
+    responseBox.textContent = `⚠️ Could not choose project folder: ${error.message || error}`;
+  }
 });
 
 refreshFilesBtn.addEventListener('click', refreshFileList);
 
 async function refreshFileList() {
-  const result = await window.kiro.listProjectFiles();
-  fileListEl.innerHTML = '';
-  if (result.error) {
-    fileListEl.innerHTML = `<li>${result.error}</li>`;
-    return;
-  }
-  result.files.forEach(rel => {
-    const li = document.createElement('li');
-    li.textContent = rel;
-    li.addEventListener('click', async () => {
-      const fileResult = await window.kiro.readProjectFile(rel);
-      if (fileResult.error) {
-        responseBox.textContent = `\u26A0\uFE0F ${fileResult.error}`;
-        return;
-      }
-      codeBox.value = fileResult.content;
-      openFilePath = rel;
-      saveToFileBtn.style.display = 'block';
-      document.querySelectorAll('#file-list li').forEach(el => el.classList.remove('selected'));
-      li.classList.add('selected');
-      document.querySelector('.tab[data-tab="chat"]').click();
+  fileListEl.innerHTML = '<li>Loading files…</li>';
+
+  try {
+    const result = await window.kiro.listProjectFiles();
+    fileListEl.innerHTML = '';
+
+    if (result.error) {
+      fileListEl.innerHTML = `<li>${result.error}</li>`;
+      return;
+    }
+
+    if (!result.files?.length) {
+      fileListEl.innerHTML = '<li>No files found.</li>';
+      return;
+    }
+
+    result.files.forEach(rel => {
+      const li = document.createElement('li');
+      li.textContent = rel;
+
+      li.addEventListener('click', async () => {
+        const fileResult = await window.kiro.readProjectFile(rel);
+        if (fileResult.error) {
+          responseBox.textContent = `⚠️ ${fileResult.error}`;
+          return;
+        }
+
+        codeBox.value = fileResult.content;
+        openFilePath = rel;
+        saveToFileBtn.style.display = 'block';
+
+        document
+          .querySelectorAll('#file-list li')
+          .forEach(el => el.classList.remove('selected'));
+        li.classList.add('selected');
+
+        showTab('chat');
+      });
+
+      fileListEl.appendChild(li);
     });
-    fileListEl.appendChild(li);
-  });
+  } catch (error) {
+    fileListEl.innerHTML = `<li>⚠️ ${error.message || error}</li>`;
+  }
 }
 
 saveToFileBtn.addEventListener('click', async () => {
   if (!openFilePath || !lastResult) return;
-  const result = await window.kiro.writeProjectFile(openFilePath, lastResult);
+
+  const result = await window.kiro.writeProjectFile(
+    openFilePath,
+    lastResult
+  );
+
   if (result.error) {
-    responseBox.textContent += `\n\n\u26A0\uFE0F ${result.error}`;
-  } else {
-    saveToFileBtn.textContent = 'Saved \u2713';
-    setTimeout(() => (saveToFileBtn.textContent = '\uD83D\uDCBE Save result to open file'), 1200);
+    responseBox.textContent += `\n\n⚠️ ${result.error}`;
+    return;
   }
+
+  saveToFileBtn.textContent = 'Saved ✓';
+  setTimeout(() => {
+    saveToFileBtn.textContent = '💾 Save result to open file';
+  }, 1200);
 });
 
 document.querySelectorAll('.quick-actions button').forEach(btn => {
   btn.addEventListener('click', async () => {
     const action = btn.dataset.action;
+
     if (action === 'grab') {
       codeBox.value = await window.kiro.readClipboard();
       openFilePath = null;
       saveToFileBtn.style.display = 'none';
       return;
     }
+
     const presets = {
       explain: 'Explain what this code does, step by step, in plain language.',
       fix: 'Find and fix the bug(s) in this code. Return the corrected full code, then briefly explain what was wrong.',
       refactor: 'Refactor this code for readability and best practices, keeping behavior identical. Return the full refactored code, then a short summary of changes.',
       comment: 'Add clear, concise comments to this code explaining each meaningful part. Return the full commented code.'
     };
+
     if (presets[action]) {
       promptBox.value = presets[action];
       await sendToAI();
@@ -146,14 +222,22 @@ document.querySelectorAll('.quick-actions button').forEach(btn => {
 
 sendBtn.addEventListener('click', sendToAI);
 
+promptBox.addEventListener('keydown', event => {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    event.preventDefault();
+    sendToAI();
+  }
+});
+
 async function sendToAI() {
   const code = codeBox.value.trim();
   const userPrompt = promptBox.value.trim() || 'Help me with this code.';
+
   if (!code && !userPrompt) return;
 
   sendBtn.disabled = true;
-  sendBtn.textContent = 'Thinking...';
-  responseBox.textContent = 'Kiro is thinking...';
+  sendBtn.textContent = 'Thinking…';
+  responseBox.textContent = 'Kiro is thinking…';
 
   const name = currentSettings?.profile?.name;
   const systemPrompt = [
@@ -162,32 +246,45 @@ async function sendToAI() {
     'When given code, respond with the requested help.',
     'If you return modified/fixed code, put ONLY the code in a single fenced code block,',
     'followed by a short plain-language explanation after the block.'
-  ].join(' ');
+  ].filter(Boolean).join(' ');
 
-  const result = await window.kiro.ask({ systemPrompt, userPrompt, code });
+  try {
+    const result = await window.kiro.ask({
+      systemPrompt,
+      userPrompt,
+      code
+    });
 
-  sendBtn.disabled = false;
-  sendBtn.textContent = 'Ask Kiro';
+    if (result.error) {
+      responseBox.textContent = `⚠️ ${result.error}`;
+      lastResult = '';
+      return;
+    }
 
-  if (result.error) {
-    responseBox.textContent = `\u26A0\uFE0F ${result.error}`;
+    responseBox.textContent = result.text || '(empty response)';
+    lastResult = extractCode(result.text) || result.text || '';
+  } catch (error) {
+    responseBox.textContent = `⚠️ ${error.message || error}`;
     lastResult = '';
-    return;
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Ask Kiro';
   }
-
-  responseBox.textContent = result.text || '(empty response)';
-  lastResult = extractCode(result.text) || result.text || '';
 }
 
 function extractCode(text) {
   if (!text) return '';
-  const match = text.match(/```[a-zA-Z]*\n([\s\S]*?)```/);
+  const match = text.match(/```[a-zA-Z0-9_+-]*\n([\s\S]*?)```/);
   return match ? match[1].trim() : '';
 }
 
 applyBtn.addEventListener('click', async () => {
   if (!lastResult) return;
+
   await window.kiro.writeClipboard(lastResult);
-  applyBtn.textContent = 'Copied \u2713';
-  setTimeout(() => (applyBtn.textContent = 'Copy result to clipboard'), 1200);
+  applyBtn.textContent = 'Copied ✓';
+
+  setTimeout(() => {
+    applyBtn.textContent = 'Copy result to clipboard';
+  }, 1200);
 });
