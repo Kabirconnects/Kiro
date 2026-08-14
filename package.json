@@ -2,12 +2,37 @@
   "name": "kiro",
   "version": "0.1.0",
   "private": true,
-  "description": "AI desktop and browser companion for coding",
-  "workspaces": ["client", "server"],
+  "description": "Kiro \ud83d\udc3e \u2014 an AI desktop cat companion that lives on your screen and helps you read, explain, fix, and edit code.",
+  "main": "electron/main.js",
+  "workspaces": ["client"],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w client\" \"npm run dev -w server\"",
-    "build": "npm run build -w client",
-    "start": "npm run start -w server"
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
   },
-  "devDependencies": {"concurrently":"^9.2.0"}
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  },
+  "build": {
+    "appId": "com.asuraai.kiro",
+    "productName": "Kiro",
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": { "target": "nsis" },
+    "mac": { "target": "dmg", "category": "public.app-category.developer-tools" },
+    "linux": { "target": ["AppImage"], "category": "Development" }
+  }
 }

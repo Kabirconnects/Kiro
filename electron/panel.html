@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<style>
+  :root {
+    --bg: #1a1428;
+    --bg2: #241b3d;
+    --accent: #7c5cff;
+    --text: #eee6ff;
+    --muted: #9a8fc2;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+  }
+  #titlebar {
+    -webkit-app-region: drag;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--bg2);
+    border-bottom: 1px solid #33264f;
+  }
+  #titlebar .title { font-weight: 600; }
+  #titlebar button {
+    -webkit-app-region: no-drag;
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px;
+  }
+  #tabs { display: flex; gap: 4px; padding: 8px 10px 0; }
+  .tab {
+    padding: 6px 10px; border-radius: 8px 8px 0 0; cursor: pointer; color: var(--muted);
+  }
+  .tab.active { background: var(--bg2); color: var(--text); }
+
+  #chat-view, #settings-view { display: flex; flex-direction: column; height: calc(100% - 90px); padding: 10px; gap: 8px; }
+  #settings-view { display: none; }
+
+  .quick-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .quick-actions button {
+    background: var(--bg2); color: var(--text); border: 1px solid #3a2c5c;
+    border-radius: 6px; padding: 5px 8px; cursor: pointer; font-size: 12px;
+  }
+  .quick-actions button:hover { border-color: var(--accent); }
+
+  textarea, input {
+    background: #14102080; border: 1px solid #3a2c5c; border-radius: 8px;
+    color: var(--text); padding: 8px; font-family: inherit; font-size: 12px;
+    resize: vertical;
+  }
+  #code-box { height: 90px; font-family: "SF Mono", Consolas, monospace; }
+  #prompt-box { height: 44px; }
+
+  #response {
+    flex: 1; overflow-y: auto; background: #14102080; border: 1px solid #3a2c5c;
+    border-radius: 8px; padding: 8px; white-space: pre-wrap; font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+  }
+
+  .row { display: flex; gap: 6px; }
+  .row > * { flex: 1; }
+
+  button.primary {
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 8px 10px; cursor: pointer; font-weight: 600;
+  }
+  button.primary:disabled { opacity: 0.5; cursor: default; }
+  button.ghost {
+    background: transparent; border: 1px solid #3a2c5c; color: var(--text);
+    border-radius: 8px; padding: 8px 10px; cursor: pointer;
+  }
+
+  label { color: var(--muted); font-size: 12px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  select { background: #14102080; color: var(--text); border: 1px solid #3a2c5c; border-radius: 8px; padding: 8px; }
+
+  .hint { color: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+  <div id="titlebar">
+    <span class="title">🐾 Kiro</span>
+    <button id="close-btn" title="Hide">✕</button>
+  </div>
+
+  <div id="tabs">
+    <div class="tab active" data-tab="chat">Chat</div>
+    <div class="tab" data-tab="settings">Settings</div>
+  </div>
+
+  <div id="chat-view">
+    <div class="quick-actions">
+      <button data-action="grab">📋 Grab clipboard</button>
+      <button data-action="explain">Explain</button>
+      <button data-action="fix">Fix bug</button>
+      <button data-action="refactor">Refactor</button>
+      <button data-action="comment">Add comments</button>
+    </div>
+    <textarea id="code-box" placeholder="Code appears here after 'Grab clipboard', or paste it yourself..."></textarea>
+    <textarea id="prompt-box" placeholder="What do you want Kiro to do? (e.g. 'fix the off-by-one error')"></textarea>
+    <div class="row">
+      <button class="primary" id="send-btn">Ask Kiro</button>
+      <button class="ghost" id="apply-btn">Copy result to clipboard</button>
+    </div>
+    <div id="response">Kiro's answer will show up here.</div>
+  </div>
+
+  <div id="settings-view">
+    <div class="field">
+      <label>Provider</label>
+      <select id="provider-select">
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>API key (stored only on this device)</label>
+      <input id="apikey-input" type="password" placeholder="sk-..." />
+    </div>
+    <div class="field">
+      <label>Model (optional override)</label>
+      <input id="model-input" type="text" placeholder="e.g. gpt-4o-mini or claude-sonnet-4-6" />
+    </div>
+    <button class="primary" id="save-settings-btn">Save</button>
+    <div class="hint">Your key is stored locally with electron-store and is only sent directly to your chosen provider's API — never to any Kiro server.</div>
+  </div>
+
+  <script src="panel.js"></script>
+</body>
+</html>
