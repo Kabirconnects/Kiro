@@ -105,16 +105,20 @@ ipcMain.handle('project:writeFile', async (event, { relativePath, content }) => 
   if (response !== 1) return { error: 'Write cancelled.' };
   try { return await writeProjectFile(relativePath, content); } catch (err) { return { error: err.message }; }
 });
-// Explicit user click: apply the proposed fix immediately to the selected project file.
 ipcMain.handle('project:applyFix', async (event, { relativePath, content }) => {
   try { return await writeProjectFile(relativePath, content); } catch (err) { return { error: err.message }; }
 });
 
 ipcMain.handle('ai:ask', async (event, { systemPrompt, userPrompt, code, imageData }) => {
   const { provider, apiKey, model } = store.store;
-  if (!apiKey) return { error: 'No API key set. Open Settings and add your OpenAI or Anthropic key.' };
+  if (!apiKey) return { error: `No ${provider || 'AI'} API key set. Open Settings and add your API key.` };
   const fullUserPrompt = code ? `${userPrompt}\n\n\`\`\`\n${code}\n\`\`\`` : userPrompt;
   try {
+    if (provider === 'cerebras') {
+      const cerebrasContent = imageData ? [{ type: 'text', text: fullUserPrompt }, { type: 'image_url', image_url: { url: imageData } }] : fullUserPrompt;
+      const res = await fetch('https://api.cerebras.ai/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model: model || 'llama-3.3-70b', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: cerebrasContent }], max_tokens: 2000 }) });
+      const data = await res.json(); if (!res.ok) return { error: data?.error?.message || `Cerebras API error (${res.status})` }; return { text: data.choices?.[0]?.message?.content || '' };
+    }
     if (provider === 'anthropic') {
       const content = imageData ? [{ type: 'text', text: fullUserPrompt }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageData.replace(/^data:image\/\w+;base64,/, '') } }] : fullUserPrompt;
       const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: model || 'claude-sonnet-4-6', max_tokens: 2000, system: systemPrompt, messages: [{ role: 'user', content }] }) });
