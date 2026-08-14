@@ -26,8 +26,8 @@ const skinsContainer = document.getElementById('skins-container');
 let lastResult = '';
 let openFilePath = null;
 let currentSettings = null;
+let lastScreenImage = null;
 
-// Small UI layer kept in JS so the existing panel HTML remains compatible.
 function installWorkspacePolish() {
   const style = document.createElement('style');
   style.textContent = `
@@ -50,6 +50,13 @@ function installWorkspacePolish() {
     #send-btn { min-height:40px; font-size:12px; }
     #apply-btn { min-height:40px; }
     #save-to-file-btn { min-height:38px; }
+    .screen-tool { grid-column:1 / -1 !important; display:flex !important; align-items:center; justify-content:space-between; gap:10px; background:linear-gradient(135deg,rgba(34,211,238,.08),rgba(139,92,246,.10)) !important; border-color:rgba(139,92,246,.25) !important; }
+    .screen-tool .screen-copy { display:flex; flex-direction:column; gap:2px; }
+    .screen-tool small { color:#8e879d; font-size:9px; font-weight:500; }
+    .screen-preview { display:none; align-items:center; gap:8px; padding:8px; border-radius:11px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); }
+    .screen-preview.visible { display:flex; }
+    .screen-preview img { width:72px; height:42px; object-fit:cover; border-radius:7px; border:1px solid rgba(255,255,255,.1); }
+    .screen-preview span { color:#a9a2b8; font-size:9px; }
     @media (max-height:560px) {
       #code-box { height:82px; min-height:68px; }
       #prompt-box { height:48px; min-height:44px; }
@@ -82,6 +89,25 @@ function installWorkspacePolish() {
   }
 }
 
+function installScreenTool() {
+  const actions = document.querySelector('.quick-actions');
+  if (!actions || document.getElementById('screen-btn')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'screen-btn';
+  btn.className = 'screen-tool';
+  btn.innerHTML = `<span class="screen-copy">👁️ See my screen <small>Capture once and ask Kiro what you need help with</small></span><span>→</span>`;
+  actions.appendChild(btn);
+
+  const preview = document.createElement('div');
+  preview.id = 'screen-preview';
+  preview.className = 'screen-preview';
+  preview.innerHTML = `<img id="screen-preview-image" alt="Screen preview"><span id="screen-preview-label">Screen captured</span>`;
+  actions.parentNode.insertBefore(preview, actions.nextSibling);
+
+  btn.addEventListener('click', captureAndAnalyzeScreen);
+}
+
 function setResponseState(state, label) {
   const el = document.getElementById('response-state');
   if (!el) return;
@@ -107,15 +133,9 @@ function showTab(tabName) {
   const validTabs = ['chat', 'files', 'character', 'settings'];
   if (!validTabs.includes(tabName)) tabName = 'chat';
 
-  tabs.forEach(tab => {
-    tab.classList.toggle('active', tab.dataset.tab === tabName);
-  });
+  tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.tab === tabName));
+  views.forEach(view => view.classList.toggle('active', view.id === `${tabName}-view`));
 
-  views.forEach(view => {
-    view.classList.toggle('active', view.id === `${tabName}-view`);
-  });
-
-  // Always reset the selected view to its top so hero/content cannot appear clipped.
   const activeView = document.getElementById(`${tabName}-view`);
   if (activeView) requestAnimationFrame(() => { activeView.scrollTop = 0; });
 
@@ -315,7 +335,7 @@ async function sendToAI() {
   const code = codeBox.value.trim();
   const userPrompt = promptBox.value.trim() || 'Help me with this code.';
 
-  if (!code && !userPrompt) return;
+  if (!code && !userPrompt && !lastScreenImage) return;
 
   sendBtn.disabled = true;
   sendBtn.textContent = 'Thinking…';
@@ -327,12 +347,14 @@ async function sendToAI() {
     'You are Kiro, a friendly AI coding companion that lives as a desktop cat.',
     name ? `The user's name is ${name}.` : '',
     'When given code, respond with the requested help.',
+    'If a screen image is provided, inspect it for visible coding errors, UI problems, terminal errors, or useful developer context.',
+    'Never claim to see information that is not visible in the provided image.',
     'If you return modified/fixed code, put ONLY the code in a single fenced code block,',
     'followed by a short plain-language explanation after the block.'
   ].filter(Boolean).join(' ');
 
   try {
-    const result = await window.kiro.ask({ systemPrompt, userPrompt, code });
+    const result = await window.kiro.ask({ systemPrompt, userPrompt, code, imageData: lastScreenImage });
 
     if (result.error) {
       responseBox.textContent = `⚠️ ${result.error}`;
@@ -355,6 +377,41 @@ async function sendToAI() {
   }
 }
 
+async function captureAndAnalyzeScreen() {
+  const btn = document.getElementById('screen-btn');
+  const label = btn?.querySelector('.screen-copy');
+  if (btn) btn.disabled = true;
+  if (label) label.innerHTML = '👁️ Capturing screen…<small>Kiro will ask for confirmation first</small>';
+  setResponseState('busy', 'Capturing');
+
+  try {
+    const result = await window.kiro.captureScreen();
+    if (result?.canceled) {
+      setResponseState('ready', 'Ready');
+      return;
+    }
+    if (result?.error) throw new Error(result.error);
+
+    lastScreenImage = result.imageData;
+    const preview = document.getElementById('screen-preview');
+    const previewImage = document.getElementById('screen-preview-image');
+    const previewLabel = document.getElementById('screen-preview-label');
+    if (previewImage) previewImage.src = result.imageData;
+    if (previewLabel) previewLabel.textContent = `${result.sourceName || 'Screen'} captured • Ask Kiro what to look for`;
+    if (preview) preview.classList.add('visible');
+
+    promptBox.value = promptBox.value.trim() || 'Look at my screen and tell me what I should fix or improve. Focus on visible coding errors, terminal errors, or problems in my development workflow.';
+    setResponseState('ready', 'Screen ready');
+    await sendToAI();
+  } catch (error) {
+    responseBox.textContent = `⚠️ Screen capture failed: ${error.message || error}`;
+    setResponseState('error', 'Screen error');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (label) label.innerHTML = '👁️ See my screen<small>Capture once and ask Kiro what you need help with</small>';
+  }
+}
+
 function extractCode(text) {
   if (!text) return '';
   const match = text.match(/```[a-zA-Z0-9_+-]*\n([\s\S]*?)```/);
@@ -372,10 +429,10 @@ applyBtn.addEventListener('click', async () => {
 });
 
 installWorkspacePolish();
+installScreenTool();
 loadSettings();
 setFileContext(null);
 
-// Final hero visibility fix: the Chat hero must always have enough height for both lines.
 const heroFixStyle = document.createElement('style');
 heroFixStyle.textContent = `
   #chat-view { scroll-padding-top: 6px; }
@@ -412,7 +469,6 @@ heroFixStyle.textContent = `
 `;
 document.head.appendChild(heroFixStyle);
 
-// Reset Chat scroll after the browser has finished laying out the panel.
 requestAnimationFrame(() => {
   const chatView = document.getElementById('chat-view');
   if (chatView) chatView.scrollTop = 0;
