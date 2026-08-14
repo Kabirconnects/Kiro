@@ -1,22 +1,9 @@
 const stage = document.getElementById('stage');
 
-let downAt = 0;
-let moved = false;
-
-stage.addEventListener('mousedown', () => {
-  downAt = Date.now();
-  moved = false;
-});
-
-window.addEventListener('mousemove', () => {
-  moved = true;
-});
-
-stage.addEventListener('mouseup', () => {
-  const held = Date.now() - downAt;
-  if (held < 350) {
-    window.kiro.togglePanel();
-  }
+// Keep the first desktop interaction deliberately simple and reliable:
+// clicking the cat opens/hides the Kiro panel.
+stage.addEventListener('click', () => {
+  window.kiro.togglePanel();
 });
 
 // Apply saved skin on load, and live-update if changed from the panel.
